@@ -7,19 +7,38 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.yourcompany.runnersensei",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "RunnerSensei needs your location to track your run route.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "RunnerSensei tracks your run even when the app is minimized.",
+        "UIBackgroundModes": ["location"]
+      }
     },
     "android": {
+      "package": "com.yourcompany.runnersensei",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#E84545"
       },
-      "predictiveBackGestureEnabled": false
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
+      ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "RunnerSensei tracks your run even when the app is minimized.",
+          "locationWhenInUsePermission": "RunnerSensei needs your location to track your run route.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ]
+    ]
   }
 }
+
