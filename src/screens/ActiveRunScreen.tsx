@@ -1,7 +1,15 @@
-import React, { useEffect } from "react";
-import { View, StyleSheet, TouchableOpacity, Text, Alert } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  Alert,
+  Modal,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RouteProp } from "@react-navigation/native";
 import { RootStackParamList } from "../../App";
 import RunMap from "../components/RunMap";
 import RunStats from "../components/RunStats";
@@ -11,9 +19,12 @@ import { useRunTrackerContext } from "../context/RunTrackerContext";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "ActiveRun">;
+  route: RouteProp<RootStackParamList, "ActiveRun">;
 };
 
-export default function ActiveRunScreen({ navigation }: Props) {
+export default function ActiveRunScreen({ navigation, route }: Props) {
+  const preRunNote = route.params?.preRunNote;
+  const suggestedTargetKm = route.params?.suggestedTargetKm;
   const {
     isTracking,
     isPaused,
@@ -25,6 +36,7 @@ export default function ActiveRunScreen({ navigation }: Props) {
     resetRun,
   } = useRunTrackerContext();
   const stats = computeStats(points, durationMs);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     if (!isTracking) navigation.replace("Home");
@@ -44,15 +56,31 @@ export default function ActiveRunScreen({ navigation }: Props) {
             navigation.replace("Home");
             return;
           }
-          await saveRun({
-            id: String(Date.now()),
-            date: new Date().toISOString(),
-            points,
-            distanceMeters: stats.distanceKm * 1000,
-            durationMs,
-          });
-          resetRun();
-          navigation.replace("Home");
+
+          const finishAndNav = async () => {
+            await saveRun({
+              id: String(Date.now()),
+              date: new Date().toISOString(),
+              points,
+              distanceMeters: stats.distanceKm * 1000,
+              durationMs,
+              preRunNote: preRunNote || undefined,
+            });
+            resetRun();
+            navigation.replace("Home");
+          };
+
+          // If this was a suggested run and user hit the target, show celebration
+          const target = suggestedTargetKm;
+          if (target && stats.distanceKm >= target - 0.01) {
+            setShowConfetti(true);
+            setTimeout(async () => {
+              setShowConfetti(false);
+              await finishAndNav();
+            }, 1600);
+          } else {
+            await finishAndNav();
+          }
         },
       },
     ]);
@@ -61,7 +89,7 @@ export default function ActiveRunScreen({ navigation }: Props) {
     <View style={styles.container}>
       <RunMap points={points} followUser style={styles.map} />
       <SafeAreaView style={styles.overlay} pointerEvents="box-none">
-        <RunStats stats={stats} />
+        <RunStats stats={stats} targetKm={suggestedTargetKm} />
         <View style={styles.controls}>
           <TouchableOpacity
             style={[styles.btn, styles.stopBtn]}
@@ -85,6 +113,12 @@ export default function ActiveRunScreen({ navigation }: Props) {
             <Text style={styles.badgeTxt}>PAUSED</Text>
           </View>
         )}
+        <Modal visible={showConfetti} transparent animationType="fade">
+          <View style={confettiStyles.container} pointerEvents="none">
+            <Text style={confettiStyles.emoji}>🎉</Text>
+            <Text style={confettiStyles.text}>Nice job! Target reached 🎊</Text>
+          </View>
+        </Modal>
       </SafeAreaView>
     </View>
   );
@@ -121,5 +155,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   badgeTxt: { color: "#FFD700", fontWeight: "800", letterSpacing: 2 },
+});
+
+const confettiStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  emoji: { fontSize: 96, marginBottom: 12 },
+  text: { color: "#fff", fontSize: 20, fontWeight: "700" },
 });
 

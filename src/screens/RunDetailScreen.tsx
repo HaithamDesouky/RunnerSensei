@@ -81,6 +81,12 @@ export default function RunDetailScreen({ navigation, route }: Props) {
             <Text style={styles.date}>
               {new Date(run.date).toLocaleString()}
             </Text>
+            {run.preRunNote ? (
+              <View style={styles.preRunBox}>
+                <Text style={styles.preRunLabel}>Feeling before run</Text>
+                <Text style={styles.preRunText}>{run.preRunNote}</Text>
+              </View>
+            ) : null}
             <View style={styles.statsRow}>
               <Stat label="Distance" value={`${distanceKm.toFixed(2)} km`} />
               <Stat label="Duration" value={formatDuration(run.durationMs)} />
@@ -133,6 +139,21 @@ const styles = StyleSheet.create({
   map: { height: 300 },
   statsBox: { padding: 20, backgroundColor: "#fff" },
   date: { fontSize: 13, color: "#666", marginBottom: 12 },
+  preRunBox: {
+    backgroundColor: "#f0f4ff",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 14,
+  },
+  preRunLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#666",
+    marginBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  preRunText: { fontSize: 14, color: "#1a1a2e" },
   statsRow: { flexDirection: "row" },
   statVal: { fontSize: 18, fontWeight: "700", color: "#1a1a2e" },
   statLbl: { fontSize: 12, color: "#666", marginTop: 4 },

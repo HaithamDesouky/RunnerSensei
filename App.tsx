@@ -9,7 +9,7 @@ import RunDetailScreen from "./src/screens/RunDetailScreen";
 
 export type RootStackParamList = {
   Home: undefined;
-  ActiveRun: undefined;
+  ActiveRun: { preRunNote?: string; suggestedTargetKm?: number };
   RunDetail: { runId: string };
 };
 

@@ -12,6 +12,7 @@ export interface Run {
   distanceMeters: number;
   durationMs: number;
   notes?: string;
+  preRunNote?: string;
 }
 
 export interface RunStats {

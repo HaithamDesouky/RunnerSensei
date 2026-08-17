@@ -3,13 +3,22 @@ import { View, Text, StyleSheet } from "react-native";
 import { RunStats as T } from "../types";
 import { formatDuration, formatPace } from "../utils/geo";
 
-const RunStats: React.FC<{ stats: T }> = ({ stats }) => (
-  <View style={styles.row}>
-    <Box label="Distance" value={`${stats.distanceKm.toFixed(2)} km`} />
-    <Box label="Duration" value={formatDuration(stats.durationMs)} />
-    <Box label="Avg Pace" value={formatPace(stats.avgPaceMinPerKm)} />
-  </View>
-);
+const RunStats: React.FC<{ stats: T; targetKm?: number }> = ({
+  stats,
+  targetKm,
+}) => {
+  const distanceLabel = targetKm ? "Remaining" : "Distance";
+  const distanceValue = targetKm
+    ? `${Math.max(0, targetKm - stats.distanceKm).toFixed(2)} km`
+    : `${stats.distanceKm.toFixed(2)} km`;
+  return (
+    <View style={styles.row}>
+      <Box label={distanceLabel} value={distanceValue} />
+      <Box label="Duration" value={formatDuration(stats.durationMs)} />
+      <Box label="Avg Pace" value={formatPace(stats.avgPaceMinPerKm)} />
+    </View>
+  );
+};
 
 const Box: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <View style={styles.box}>
