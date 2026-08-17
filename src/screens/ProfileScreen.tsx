@@ -135,7 +135,10 @@ export default function ProfileScreen() {
             animationType="fade"
             onRequestClose={() => setModalVisible(false)}
           >
-            <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
+            <Pressable
+              style={styles.modalOverlay}
+              onPress={() => setModalVisible(false)}
+            >
               <Pressable style={styles.modalContent} onPress={() => {}}>
                 <Pressable
                   android_ripple={{ color: "#eee" }}
@@ -226,7 +229,11 @@ const styles = StyleSheet.create({
   sub: { color: "#666", marginTop: 4 },
   avatarPress: { width: 64, height: 64, borderRadius: 32, overflow: "hidden" },
   avatarImg: { width: 64, height: 64, borderRadius: 32 },
-  avatarColumn: { flexDirection: "column", alignItems: "center", marginRight: 12 },
+  avatarColumn: {
+    flexDirection: "column",
+    alignItems: "center",
+    marginRight: 12,
+  },
   avatarPlaceholder: {
     width: 64,
     height: 64,
@@ -289,9 +296,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
   },
-  modalClose: { position: "absolute", top: 8, right: 8, zIndex: 10, backgroundColor: "rgba(255,255,255,0.85)", padding: 6, borderRadius: 16 },
+  modalClose: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    zIndex: 10,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    padding: 6,
+    borderRadius: 16,
+  },
   modalCloseTxt: { color: "#333", fontWeight: "700" },
-  modalImage: { width: "100%", height: "100%", borderRadius: 160, marginTop: 0 },
+  modalImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 160,
+    marginTop: 0,
+  },
   modalPlaceholder: {
     width: "100%",
     height: "100%",
