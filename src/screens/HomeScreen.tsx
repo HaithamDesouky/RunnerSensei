@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useLayoutEffect } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Modal,
   ScrollView,
   Pressable,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -52,6 +53,31 @@ export default function HomeScreen({ navigation }: Props) {
   const [keyModalVisible, setKeyModalVisible] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState("");
   const { startRun } = useRunTrackerContext();
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
+
+  // load user profile for avatar/initials
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        try {
+          const { getUser } = await import("../utils/userStorage");
+          const u = await getUser();
+          if (!active) return;
+          setAvatarUri(u.avatarUri ?? null);
+          setUsername(u.username ?? null);
+        } catch (e) {
+          console.warn("load user for avatar failed", e);
+        }
+      })();
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
+
+  const openProfile = () => navigation.navigate("Profile");
 
   useFocusEffect(
     useCallback(() => {
@@ -111,8 +137,25 @@ export default function HomeScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Text style={styles.title}>RunnerSensei</Text>
-        <Text style={styles.sub}>Your personal running coach</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.title}>RunnerSensei</Text>
+          <Text style={styles.sub}>Your personal running coach</Text>
+        </View>
+        <Pressable
+          android_ripple={{ color: "#eee" }}
+          style={styles.profileBtn}
+          onPress={openProfile}
+        >
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.profileCircle} />
+          ) : (
+            <View style={styles.profileCircle}>
+              <Text style={styles.profileInitials}>
+                {(username || "S").slice(0, 1).toUpperCase()}
+              </Text>
+            </View>
+          )}
+        </Pressable>
       </View>
 
       <View style={styles.feelingBox}>
@@ -146,7 +189,6 @@ export default function HomeScreen({ navigation }: Props) {
           </Text>
         </TouchableOpacity>
       </View>
-      
 
       {/* Sensei suggestion modal */}
       <Modal
@@ -212,8 +254,6 @@ export default function HomeScreen({ navigation }: Props) {
           </Pressable>
         </Pressable>
       </Modal>
-
-      
 
       {/* OpenAI API key entry modal */}
       <Modal
@@ -295,7 +335,15 @@ export default function HomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   map: { flex: 1 },
   safe: { flex: 1, backgroundColor: "#f5f5f5" },
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerLeft: { flex: 1 },
   title: { fontSize: 30, fontWeight: "800", color: "#1a1a2e" },
   sub: { fontSize: 14, color: "#888", marginTop: 2 },
   feelingBox: {
@@ -434,7 +482,16 @@ const styles = StyleSheet.create({
   },
   empty: { alignItems: "center", marginTop: 48 },
   emptyTxt: { fontSize: 15, color: "#aaa" },
+  profileBtn: { marginLeft: 12 },
+  profileCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#E84545",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+  },
+  profileInitials: { color: "#fff", fontWeight: "800" },
 });
-
-
 

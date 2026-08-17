@@ -7,15 +7,34 @@ import HomeScreen from "./src/screens/HomeScreen";
 import ActiveRunScreen from "./src/screens/ActiveRunScreen";
 import RunDetailScreen from "./src/screens/RunDetailScreen";
 
+import ProfileScreen from "./src/screens/ProfileScreen";
+import { useEffect } from "react";
+import { getUser } from "./src/utils/userStorage";
+import { recomputeUserFromRuns } from "./src/utils/recomputeUserFromRuns";
+
 export type RootStackParamList = {
   Home: undefined;
   ActiveRun: { preRunNote?: string; suggestedTargetKm?: number };
   RunDetail: { runId: string };
+  Profile: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+  useEffect(() => {
+    // If the user profile appears empty but runs exist, replay runs to award XP/badges
+    (async () => {
+      try {
+        const user = await getUser();
+        if ((user.totalRuns || 0) === 0) {
+          await recomputeUserFromRuns();
+        }
+      } catch (e) {
+        console.warn("recomputeUserFromRuns failed:", e);
+      }
+    })();
+  }, []);
   return (
     <SafeAreaProvider>
       <RunTrackerProvider>
@@ -37,6 +56,11 @@ export default function App() {
               name="ActiveRun"
               component={ActiveRunScreen}
               options={{ title: "Active Run", headerBackVisible: false }}
+            />
+            <Stack.Screen
+              name="Profile"
+              component={ProfileScreen}
+              options={{ title: "Profile" }}
             />
             <Stack.Screen
               name="RunDetail"
