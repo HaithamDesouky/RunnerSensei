@@ -184,7 +184,7 @@ export default function ProfileScreen() {
               (arrayBuffer.byteLength && arrayBuffer.byteLength < 1024)
             ) {
               try {
-                const FileSystem = await import("expo-file-system/legacy");
+                const FileSystem = await import("expo-file-system");
                 const b64 = await FileSystem.readAsStringAsync(uri, {
                   encoding: FileSystem.EncodingType.Base64,
                 });
