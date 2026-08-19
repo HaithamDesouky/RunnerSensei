@@ -22,11 +22,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright browsers and deps
-        uses: microsoft/playwright-github-action@v1
-        with:
-          install-deps: true
-          browsers: "chromium,firefox,webkit"
+      - name: Install Playwright browsers (try deps, fallback to browsers-only)
+        run: |
+          set -e
+          echo "Attempting 'npx playwright install --with-deps' (may fail on some distros)"
+          if npx playwright install --with-deps; then
+            echo "Installed browsers and system dependencies"
+          else
+            echo "--with-deps failed; installing browsers only"
+            npx playwright install chromium firefox webkit
+          fi
 
       - name: Start Expo web (port 8081)
         env:
