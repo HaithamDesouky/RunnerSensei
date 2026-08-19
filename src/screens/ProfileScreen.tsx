@@ -11,6 +11,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getUser, UserProfile, setAvatarUri } from "../utils/userStorage";
+import { getRuns } from "../utils/runStorage";
+import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
 import supabase from "../utils/supabaseClient";
 
@@ -36,6 +38,10 @@ const BADGE_EMOJI: Record<string, string> = {
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const navigation = useNavigation();
+  const [xpModalVisible, setXpModalVisible] = useState(false);
+  const [bestDistanceRun, setBestDistanceRun] = useState<any | null>(null);
+  const [bestPaceRun, setBestPaceRun] = useState<any | null>(null);
 
   const [modalVisible, setModalVisible] = useState(false);
   const { signOut } = useAuth();
@@ -45,6 +51,32 @@ export default function ProfileScreen() {
     getUser().then((u) => {
       if (mounted) setUser(u);
     });
+    // compute PRs
+    (async () => {
+      try {
+        const runs = await getRuns();
+        if (!runs || runs.length === 0) return;
+        let bestDist = runs[0];
+        let bestPace = runs[0];
+        const pace = (r: any) => {
+          if (!r.distanceMeters || r.distanceMeters <= 0) return Infinity;
+          const minutes = (r.durationMs || 0) / 60000;
+          const km = (r.distanceMeters || 0) / 1000;
+          return minutes / km;
+        };
+        for (const r of runs) {
+          if ((r.distanceMeters || 0) > (bestDist.distanceMeters || 0))
+            bestDist = r;
+          if (pace(r) < pace(bestPace)) bestPace = r;
+        }
+        if (mounted) {
+          setBestDistanceRun(bestDist);
+          setBestPaceRun(bestPace);
+        }
+      } catch (e) {
+        console.warn("compute PRs failed", e);
+      }
+    })();
     return () => {
       mounted = false;
     };
@@ -252,7 +284,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 140 }}>
+      <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 140 }}>
         <View style={styles.headerTop}>
           <View style={styles.avatarColumn}>
             <Pressable
@@ -326,10 +358,18 @@ export default function ProfileScreen() {
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>XP Progress</Text>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
-          </View>
-          <Text style={styles.small}>{progressPct}% to next level</Text>
+          <Pressable
+            onPress={() => setXpModalVisible(true)}
+            android_ripple={{ color: "#eee" }}
+            accessibilityLabel="XP details"
+          >
+            <View style={styles.progressBar}>
+              <View
+                style={[styles.progressFill, { width: `${progressPct}%` }]}
+              />
+            </View>
+            <Text style={styles.small}>{progressPct}% to next level</Text>
+          </Pressable>
         </View>
 
         <View style={styles.card}>
@@ -343,19 +383,83 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
+        {/* Personal Records */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Personal Records</Text>
+          {bestDistanceRun ? (
+            <Pressable
+              onPress={() =>
+                (navigation as any).navigate("RunDetail", {
+                  runId: bestDistanceRun.id,
+                })
+              }
+              style={styles.prRow}
+            >
+              <View style={styles.prColLabel}>
+                <View style={styles.prLabelRow}>
+                  <Text style={styles.prLabel}>Longest Distance</Text>
+                  <Text style={styles.prIcon}>{BADGE_EMOJI['PR Distance']}</Text>
+                </View>
+              </View>
+              <View style={styles.prColValue}>
+                <Text style={styles.prValue}>
+                  {((bestDistanceRun.distanceMeters || 0) / 1000).toFixed(2)} km
+                </Text>
+              </View>
+              <View style={styles.prColDate}>
+                <Text style={styles.prDate}>
+                  {new Date(bestDistanceRun.date).toLocaleDateString()}
+                </Text>
+              </View>
+            </Pressable>
+          ) : (
+            <Text style={styles.small}>No distance records yet</Text>
+          )}
+          {bestPaceRun ? (
+            <Pressable
+              onPress={() =>
+                (navigation as any).navigate("RunDetail", {
+                  runId: bestPaceRun.id,
+                })
+              }
+              style={[styles.prRow, { marginTop: 8 }]}
+            >
+              <View style={styles.prColLabel}>
+                <View style={styles.prLabelRow}>
+                  <Text style={styles.prLabel}>Best Pace</Text>
+                  <Text style={styles.prIcon}>{BADGE_EMOJI['PR Pace']}</Text>
+                </View>
+              </View>
+              <View style={styles.prColValue}>
+                <Text style={styles.prValue}>{formatPace(bestPaceRun)}</Text>
+              </View>
+              <View style={styles.prColDate}>
+                <Text style={styles.prDate}>
+                  {new Date(bestPaceRun.date).toLocaleDateString()}
+                </Text>
+              </View>
+            </Pressable>
+          ) : (
+            <Text style={styles.small}>No pace records yet</Text>
+          )}
+        </View>
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Badges</Text>
-          {user.badges.length === 0 ? (
+          {user.badges.filter((b) => b !== "PR Distance" && b !== "PR Pace")
+            .length === 0 ? (
             <Text style={styles.small}>No badges yet — go for a run!</Text>
           ) : (
             <View style={styles.badgeRow}>
-              {user.badges.map((b) => (
-                <View key={b} style={styles.badge}>
-                  <Text style={styles.badgeTxt}>
-                    {(BADGE_EMOJI[b] ?? "🏅") + " " + b}
-                  </Text>
-                </View>
-              ))}
+              {user.badges
+                .filter((b) => b !== "PR Distance" && b !== "PR Pace")
+                .map((b) => (
+                  <View key={b} style={styles.badge}>
+                    <Text style={styles.badgeTxt}>
+                      {(BADGE_EMOJI[b] ?? "🏅") + " " + b}
+                    </Text>
+                  </View>
+                ))}
             </View>
           )}
         </View>
@@ -371,15 +475,52 @@ export default function ProfileScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      <Modal
+        visible={xpModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setXpModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setXpModalVisible(false)}
+        >
+          <Pressable style={styles.xpModalBox} onPress={() => {}}>
+            <View style={{ alignSelf: "flex-end" }}>
+              <Pressable
+                onPress={() => setXpModalVisible(false)}
+                style={styles.modalClose}
+                android_ripple={{ color: "#eee" }}
+              >
+                <Text style={styles.modalCloseTxt}>✕</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.xpModalTitle}>How XP Works</Text>
+            <Text style={styles.xpModalText}>
+              You have {user?.xp ?? 0} XP. You need{" "}
+              {500 - ((user?.xp ?? 0) % 500)} XP to reach the next level.
+            </Text>
+            <Text style={styles.xpModalText}>
+              Earn XP by logging runs — distance and consistency increase XP.
+              Bonuses are awarded for streaks and personal records.
+            </Text>
+            <Text
+              style={[styles.xpModalText, { marginTop: 12, fontWeight: "700" }]}
+            >
+              Tap anywhere to close.
+            </Text>
+          </Pressable>
+        </Pressable>
+      </Modal>
       <View style={styles.footer}>
         <Pressable
           style={styles.logoutBtn}
           android_ripple={{ color: "#eee" }}
           onPress={() =>
-            Alert.alert("Sign out?", "Are you sure you want to sign out?", [
+            Alert.alert("Logout?", "Are you sure you want to logout?", [
               { text: "Cancel", style: "cancel" },
               {
-                text: "Sign out",
+                text: "Logout",
                 style: "destructive",
                 onPress: async () => {
                   try {
@@ -392,20 +533,33 @@ export default function ProfileScreen() {
             ])
           }
         >
-          <Text style={styles.logoutTxt}>Sign Out</Text>
+          <View style={styles.logoutContent}>
+            <Text style={styles.logoutIcon}>🔓</Text>
+            <Text style={[styles.logoutTxt, { marginLeft: 8 }]}>Logout</Text>
+          </View>
         </Pressable>
       </View>
     </SafeAreaView>
   );
 }
 
+function formatPace(r: any) {
+  if (!r || !r.distanceMeters || r.distanceMeters <= 0) return "—";
+  const minutes = (r.durationMs || 0) / 60000;
+  const km = (r.distanceMeters || 0) / 1000;
+  const pace = minutes / km; // minutes per km
+  const mins = Math.floor(pace);
+  const secs = Math.round((pace - mins) * 60);
+  return `${mins}:${secs.toString().padStart(2, "0")} /km`;
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#f5f5f5" },
-  headerTop: { marginBottom: 10, flexDirection: "row", alignItems: "center" },
+  headerTop: { marginBottom: 6, flexDirection: "row", alignItems: "center" },
   title: { fontSize: 28, fontWeight: "800", color: "#1a1a2e" },
   sub: { color: "#666", marginTop: 4 },
-  avatarPress: { width: 64, height: 64, borderRadius: 32, overflow: "hidden" },
-  avatarImg: { width: 64, height: 64, borderRadius: 32 },
+  avatarPress: { width: 96, height: 96, borderRadius: 48, overflow: "hidden" },
+  avatarImg: { width: 96, height: 96, borderRadius: 48 },
   avatarColumn: {
     flexDirection: "column",
     alignItems: "center",
@@ -461,10 +615,26 @@ const styles = StyleSheet.create({
     marginTop: 12,
     backgroundColor: "#E84545",
     paddingVertical: 12,
+    paddingHorizontal: 20,
     borderRadius: 12,
     alignItems: "center",
   },
   logoutTxt: { color: "#fff", fontWeight: "800" },
+  logoutContent: { flexDirection: "row", alignItems: "center" },
+  logoutIcon: { color: "#fff", fontSize: 18 },
+  prRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  prLabel: { fontWeight: "700", color: "#333" },
+  prValue: { fontWeight: "700", color: "#1a1a2e", textAlign: "right" },
+  prDate: { color: "#666", fontSize: 12, textAlign: "right" },
+  prColLabel: { flex: 2 },
+  prColValue: { flex: 1, alignItems: "flex-end", paddingLeft: 8 },
+  prColDate: { flex: 1, alignItems: "flex-end", paddingLeft: 8 },
+  prIcon: { marginLeft: 8, fontSize: 16 },
+  prLabelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -472,10 +642,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modalContent: {
-    width: 320,
-    height: 320,
+    width: 420,
+    height: 420,
     backgroundColor: "#fff",
-    borderRadius: 160,
+    borderRadius: 210,
     padding: 0,
     alignItems: "center",
     justifyContent: "center",
@@ -494,7 +664,7 @@ const styles = StyleSheet.create({
   modalImage: {
     width: "100%",
     height: "100%",
-    borderRadius: 160,
+    borderRadius: 210,
     marginTop: 0,
   },
   modalPlaceholder: {
@@ -505,13 +675,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 160,
   },
+  xpModalBox: {
+    width: 320,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    alignSelf: "center",
+  },
+  xpModalTitle: { fontWeight: "800", fontSize: 18, marginBottom: 8 },
+  xpModalText: { color: "#333", lineHeight: 20 },
   footer: {
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 20,
+    bottom: 70,
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
   },
 });
 

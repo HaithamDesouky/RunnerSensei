@@ -44,15 +44,17 @@ export async function generateSuggestionAI(
 
   const user = `Runs: ${JSON.stringify(recent)}\nFeeling: "${feeling.trim()}"\nGuidelines: prefer conservative suggestions; if injury words (pain, injured, knee, ankle, shin, sprain) present, suggest Rest. Keep message short (<=120 chars).`;
 
-  const body = {
-    model: "gpt-3.5-turbo",
+  const body: any = {
+    model: "gpt-5-mini",
     messages: [
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    max_tokens: 300,
-    temperature: 0.2,
+    // gpt-5-mini currently only supports the default temperature (1). Use 1 to avoid API errors.
+    temperature: 1,
   };
+
+  console.log("OpenAI request body:", body);
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
