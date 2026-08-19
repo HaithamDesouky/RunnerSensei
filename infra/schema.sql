@@ -6,6 +6,7 @@ create table if not exists profiles (
   username text,
   xp integer default 0,
   level integer default 1,
+  badges jsonb default '[]',
   avatar_url text,
   current_streak integer default 0,
   last_run timestamptz,

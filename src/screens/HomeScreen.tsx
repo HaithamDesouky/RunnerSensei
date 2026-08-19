@@ -17,7 +17,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
 import { RootStackParamList } from "../../App";
 import { Run } from "../types";
-import { getRuns } from "../utils/runStorage";
+import { getRuns, saveRun } from "../utils/runStorage";
 import { useRunTrackerContext } from "../context/RunTrackerContext";
 import RunListItem from "../components/RunListItem";
 import RunMap from "../components/RunMap";
@@ -55,6 +55,10 @@ export default function HomeScreen({ navigation }: Props) {
   const { startRun } = useRunTrackerContext();
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
+  const [manualModalVisible, setManualModalVisible] = useState(false);
+  const [manualDistanceKm, setManualDistanceKm] = useState("");
+  const [manualDurationMin, setManualDurationMin] = useState("");
+  const [manualSaving, setManualSaving] = useState(false);
 
   // load user profile for avatar/initials
   useFocusEffect(
@@ -78,6 +82,34 @@ export default function HomeScreen({ navigation }: Props) {
   );
 
   const openProfile = () => navigation.navigate("Profile");
+
+  const handleAddManualRun = async () => {
+    if (manualSaving) return;
+    const km = parseFloat(manualDistanceKm);
+    const mins = parseFloat(manualDurationMin);
+    if (!km || km <= 0 || !mins || mins <= 0) return;
+    const run: Run = {
+      id: `manual-${Date.now()}`,
+      date: new Date().toISOString(),
+      points: [],
+      distanceMeters: Math.round(km * 1000),
+      durationMs: Math.round(mins * 60 * 1000),
+      notes: "Manual entry",
+    };
+    setManualSaving(true);
+    try {
+      await saveRun(run);
+      const data = await getRuns();
+      setRuns(data);
+      setManualModalVisible(false);
+      setManualDistanceKm("");
+      setManualDurationMin("");
+    } catch (e) {
+      console.warn("manual save failed", e);
+    } finally {
+      setManualSaving(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -136,6 +168,51 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <Modal visible={manualModalVisible} transparent animationType="slide">
+        <View style={styles.manualModalOverlay}>
+          <View style={styles.manualModalContent}>
+            <Text style={{ fontWeight: "700", fontSize: 18, marginBottom: 8 }}>
+              Add Run
+            </Text>
+            <TextInput
+              placeholder="Distance (km)"
+              keyboardType="decimal-pad"
+              value={manualDistanceKm}
+              onChangeText={setManualDistanceKm}
+              style={styles.input}
+            />
+            <TextInput
+              placeholder="Duration (minutes)"
+              keyboardType="decimal-pad"
+              value={manualDurationMin}
+              onChangeText={setManualDurationMin}
+              style={styles.input}
+            />
+            <View style={{ flexDirection: "row", marginTop: 12 }}>
+              <Pressable
+                style={styles.modalBtn}
+                onPress={() => setManualModalVisible(false)}
+              >
+                <Text>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.modalBtn,
+                  { marginLeft: 8, opacity: manualSaving ? 0.7 : 1 },
+                ]}
+                onPress={handleAddManualRun}
+                disabled={manualSaving}
+              >
+                {manualSaving ? (
+                  <ActivityIndicator color="#E84545" />
+                ) : (
+                  <Text style={{ fontWeight: "700" }}>Save</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.title}>RunnerSensei</Text>
@@ -170,6 +247,17 @@ export default function HomeScreen({ navigation }: Props) {
         />
       </View>
 
+      <TouchableOpacity
+        style={[styles.senseiBtnFull]}
+        onPress={handleAskSensei}
+        activeOpacity={0.85}
+        disabled={aiLoading}
+      >
+        <Text style={styles.senseiTxt}>
+          {aiLoading ? "Thinking..." : "🥋 Ask Sensei"}
+        </Text>
+      </TouchableOpacity>
+
       <View style={styles.btnRow}>
         <TouchableOpacity
           style={[styles.startBtn, styles.btnFlex]}
@@ -179,14 +267,11 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.startTxt}>▶ Start Run</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.senseiBtn, styles.btnFlex]}
-          onPress={handleAskSensei}
+          style={[styles.addBtn, styles.btnFlex]}
+          onPress={() => setManualModalVisible(true)}
           activeOpacity={0.85}
-          disabled={aiLoading}
         >
-          <Text style={styles.senseiTxt}>
-            {aiLoading ? "Thinking..." : "🥋 Ask Sensei"}
-          </Text>
+          <Text style={styles.addTxt}>＋ Add Run</Text>
         </TouchableOpacity>
       </View>
 
@@ -199,57 +284,64 @@ export default function HomeScreen({ navigation }: Props) {
       >
         <Pressable style={styles.overlay} onPress={() => setSuggestion(null)}>
           <Pressable style={styles.sheet} onPress={() => {}}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Sensei Says</Text>
             {suggestion && (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {suggestion.warnings.length > 0 && (
-                  <View style={styles.warningBox}>
-                    {suggestion.warnings.map((w) => (
-                      <Text key={w} style={styles.warningTxt}>
-                        ⚠ {w}
+              <>
+                <View style={styles.sheetHandle} />
+                <Text style={styles.sheetTitle}>Sensei Says</Text>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {suggestion.warnings.length > 0 && (
+                    <View style={styles.warningBox}>
+                      {suggestion.warnings.map((w) => (
+                        <Text key={w} style={styles.warningTxt}>
+                          ⚠ {w}
+                        </Text>
+                      ))}
+                    </View>
+                  )}
+                  <View style={styles.metaRow}>
+                    <View
+                      style={[
+                        styles.badge,
+                        intensityColor(suggestion.intensity),
+                      ]}
+                    >
+                      <Text style={styles.badgeTxt}>
+                        {suggestion.intensity}
                       </Text>
-                    ))}
+                    </View>
+                    {suggestion.targetDistanceKm > 0 && (
+                      <Text style={styles.metaStat}>
+                        {suggestion.targetDistanceKm} km
+                      </Text>
+                    )}
+                    {suggestion.estimatedDurationMin > 0 && (
+                      <Text style={styles.metaStat}>
+                        ~{suggestion.estimatedDurationMin} min
+                      </Text>
+                    )}
                   </View>
-                )}
-                <View style={styles.metaRow}>
-                  <View
-                    style={[styles.badge, intensityColor(suggestion.intensity)]}
-                  >
-                    <Text style={styles.badgeTxt}>{suggestion.intensity}</Text>
-                  </View>
-                  {suggestion.targetDistanceKm > 0 && (
-                    <Text style={styles.metaStat}>
-                      {suggestion.targetDistanceKm} km
-                    </Text>
+                  <Text style={styles.suggestionMsg}>{suggestion.message}</Text>
+                  {suggestion.intensity !== "Rest" ? (
+                    <TouchableOpacity
+                      style={styles.goBtn}
+                      onPress={handleStartSuggested}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.goTxt}>▶ Start This Run</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.dismissBtn}
+                      onPress={() => setSuggestion(null)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.dismissTxt}>
+                        Got it, rest day it is
+                      </Text>
+                    </TouchableOpacity>
                   )}
-                  {suggestion.estimatedDurationMin > 0 && (
-                    <Text style={styles.metaStat}>
-                      ~{suggestion.estimatedDurationMin} min
-                    </Text>
-                  )}
-                </View>
-                <Text style={styles.suggestionMsg}>{suggestion.message}</Text>
-                {suggestion.intensity !== "Rest" ? (
-                  <TouchableOpacity
-                    style={styles.goBtn}
-                    onPress={handleStartSuggested}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.goTxt}>▶ Start This Run</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.dismissBtn}
-                    onPress={() => setSuggestion(null)}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.dismissTxt}>
-                      Got it, rest day it is
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </ScrollView>
+                </ScrollView>
+              </>
             )}
           </Pressable>
         </Pressable>
@@ -334,7 +426,7 @@ export default function HomeScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   map: { flex: 1 },
-  safe: { flex: 1, backgroundColor: "#f5f5f5" },
+  safe: { flex: 1, backgroundColor: "#f5f5f5", paddingHorizontal: 8 },
   header: {
     paddingHorizontal: 20,
     paddingTop: 12,
@@ -346,6 +438,7 @@ const styles = StyleSheet.create({
   headerLeft: { flex: 1 },
   title: { fontSize: 30, fontWeight: "800", color: "#1a1a2e" },
   sub: { fontSize: 14, color: "#888", marginTop: 2 },
+
   feelingBox: {
     marginHorizontal: 16,
     marginTop: 16,
@@ -374,6 +467,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
+
   btnRow: {
     flexDirection: "row",
     marginHorizontal: 16,
@@ -381,35 +475,53 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   btnFlex: { flex: 1, marginHorizontal: 0, marginVertical: 0 },
+
   startBtn: {
-    backgroundColor: "#E84545",
+    backgroundColor: "#4caf50",
     borderRadius: 16,
-    paddingVertical: 22,
+    paddingVertical: 16,
     alignItems: "center",
     elevation: 6,
-    shadowColor: "#E84545",
+    shadowColor: "#4caf50",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
   },
   startTxt: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     letterSpacing: 0.5,
   },
-  senseiBtn: {
+
+  addBtn: {
+    backgroundColor: "#7b1fa2",
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    elevation: 6,
+    shadowColor: "#7b1fa2",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+  },
+  addTxt: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+
+  senseiBtnFull: {
     backgroundColor: "#1a1a2e",
     borderRadius: 16,
-    paddingVertical: 22,
+    paddingVertical: 26,
     alignItems: "center",
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
+    marginHorizontal: 16,
+    marginTop: 12,
   },
   senseiTxt: { color: "#fff", fontSize: 16, fontWeight: "700" },
+
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
@@ -437,6 +549,7 @@ const styles = StyleSheet.create({
     color: "#1a1a2e",
     marginBottom: 14,
   },
+
   warningBox: {
     backgroundColor: "#fff8e1",
     borderRadius: 10,
@@ -459,6 +572,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 24,
   },
+
   goBtn: {
     backgroundColor: "#E84545",
     borderRadius: 14,
@@ -473,15 +587,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   dismissTxt: { color: "#555", fontSize: 15, fontWeight: "600" },
+
   section: {
     fontSize: 18,
     fontWeight: "600",
     color: "#1a1a2e",
     paddingHorizontal: 20,
-    marginBottom: 4,
+    marginTop: 9,
+    marginBottom: 9,
+    backgroundColor: "transparent",
   },
+
   empty: { alignItems: "center", marginTop: 48 },
   emptyTxt: { fontSize: 15, color: "#aaa" },
+
   profileBtn: { marginLeft: 12 },
   profileCircle: {
     width: 44,
@@ -493,5 +612,47 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   profileInitials: { color: "#fff", fontWeight: "800" },
+
+  addManualBtn: {
+    marginLeft: 12,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  addManualTxt: { color: "#1a1a2e", fontWeight: "700" },
+
+  manualModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  manualModalContent: {
+    width: 320,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "stretch",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginTop: 8,
+  },
+  modalBtn: {
+    flex: 1,
+    backgroundColor: "#fff",
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
 });
 

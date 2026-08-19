@@ -1,4 +1,5 @@
 import { Run } from "../types";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   addXp,
   addBadge,
@@ -80,6 +81,8 @@ export async function saveRun(run: Run): Promise<void> {
     console.warn("Error awarding XP/badges:", e);
   }
 }
+
+const RUNS_KEY = "runs_v1";
 
 export async function getRuns(): Promise<Run[]> {
   try {

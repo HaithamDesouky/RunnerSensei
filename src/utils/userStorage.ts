@@ -1,4 +1,5 @@
 import supabase from "./supabaseClient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface UserProfile {
   xp: number;
@@ -62,7 +63,7 @@ export async function getUser(): Promise<UserProfile> {
       return { ...DEFAULT_PROFILE };
     }
     const p: any = data || {};
-    // Resolve avatar URL: support stored storage paths, file URIs, and absolute URLs
+    // Resolve avatar URL: support stored storage paths, file URIs, absolute URLs, and cached signed URLs
     let avatarUri: string | null = null;
     if (p.avatar_url) {
       const val: string = p.avatar_url;
@@ -75,12 +76,37 @@ export async function getUser(): Promise<UserProfile> {
       ) {
         avatarUri = val;
       } else {
-        // assume this is a storage path in the configured bucket; try to create a signed URL
+        // assume this is a storage path in the configured bucket; check cache first
         try {
-          const { data: signed, error: signErr } = await supabase.storage
-            .from("runnersensei")
-            .createSignedUrl(val, 60 * 60 * 24);
-          if (!signErr && signed?.signedUrl) avatarUri = signed.signedUrl;
+          const cacheKey = `avatar_cache_${userId}`;
+          const cached = await AsyncStorage.getItem(cacheKey);
+          const now = Date.now();
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              if (parsed && parsed.signedUrl && parsed.expiresAt && parsed.expiresAt > now) {
+                avatarUri = parsed.signedUrl;
+              }
+            } catch (e) {
+              // ignore parse errors
+            }
+          }
+          if (!avatarUri) {
+            const TTL_SECONDS = 60 * 60 * 24; // 24 hours
+            const { data: signed, error: signErr } = await supabase.storage
+              .from("runnersensei")
+              .createSignedUrl(val, TTL_SECONDS);
+            if (!signErr && signed?.signedUrl) {
+              avatarUri = signed.signedUrl;
+              // store cache with expiry
+              const expiresAt = Date.now() + TTL_SECONDS * 1000;
+              try {
+                await AsyncStorage.setItem(cacheKey, JSON.stringify({ signedUrl: avatarUri, expiresAt }));
+              } catch (e) {
+                console.warn("failed to cache avatar signed url", e);
+              }
+            }
+          }
         } catch (e) {
           console.warn("failed to create signed url for avatar", e);
         }
