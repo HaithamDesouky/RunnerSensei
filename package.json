@@ -27,7 +27,8 @@
     "typescript": "~6.0.3",
     "@playwright/test": "^1.40.0",
     "playwright": "^1.40.0",
-    "cross-env": "^7.0.3"
+    "cross-env": "^7.0.3",
+    "wait-on": "^9.1.0"
   },
   "scripts": {
     "test:e2e": "cross-env PWDEBUG=1 npx playwright test",
