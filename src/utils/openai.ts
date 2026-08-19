@@ -54,7 +54,7 @@ export async function generateSuggestionAI(
     temperature: 1,
   };
 
-  console.log("OpenAI request body:", body);
+  // request body prepared
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",

@@ -31,7 +31,6 @@ export default function SignUpScreen() {
     setLoading(true);
     try {
       const resp = await signUp(email.trim(), password);
-      console.log("SignUp success response:", resp);
       // Show confirmation message to the user after registering
       Alert.alert(
         "Registration",
