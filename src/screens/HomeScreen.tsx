@@ -254,6 +254,7 @@ export default function HomeScreen({ navigation }: Props) {
           android_ripple={{ color: "#eee" }}
           style={styles.profileBtn}
           onPress={openProfile}
+          accessibilityLabel="Open Profile"
         >
           {avatarUri ? (
             <Image source={{ uri: avatarUri }} style={styles.profileCircle} />

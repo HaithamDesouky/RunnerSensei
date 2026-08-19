@@ -13,13 +13,17 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const TEST_USER = { id: "test-user-1", email: "test@example.com" } as User;
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const isTestMode = typeof window !== "undefined" && (window as any).__TEST_MODE__;
+  const [user, setUser] = useState<User | null>(isTestMode ? TEST_USER : null);
+  const [loading, setLoading] = useState(!isTestMode);
 
   useEffect(() => {
+    if (isTestMode) return;
     let mounted = true;
     (async () => {
       try {

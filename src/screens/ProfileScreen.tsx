@@ -305,7 +305,10 @@ export default function ProfileScreen() {
                 />
               ) : (
                 <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarInitials}>
+                  <Text
+                    accessibilityLabel="profile-initial"
+                    style={styles.avatarInitials}
+                  >
                     {(user.username || "S").slice(0, 1).toUpperCase()}
                   </Text>
                 </View>

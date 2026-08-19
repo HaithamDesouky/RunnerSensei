@@ -24,9 +24,14 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "@playwright/test": "^1.40.0",
+    "playwright": "^1.40.0",
+    "cross-env": "^7.0.3"
   },
   "scripts": {
+    "test:e2e": "cross-env PWDEBUG=1 npx playwright test",
+    "test:e2e:ci": "npx playwright test --reporter=list",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
@@ -34,3 +39,4 @@
   },
   "private": true
 }
+

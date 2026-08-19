@@ -1,0 +1,11 @@
+{
+  "xp": 1234,
+  "level": 3,
+  "badges": ["First Run", "5K Club"],
+  "currentStreak": 2,
+  "lastRunDate": "2026-08-18",
+  "weeklyRuns": { "2026-W34": 2 },
+  "totalRuns": 5,
+  "avatarUri": null,
+  "username": "TestUser"
+}
