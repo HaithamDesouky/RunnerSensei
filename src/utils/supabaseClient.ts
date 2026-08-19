@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Expect SUPABASE_URL and SUPABASE_ANON_KEY in environment or app config extra
 const getEnv = () => {
@@ -24,6 +25,14 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 export const supabase = createClient(
   SUPABASE_URL || "",
   SUPABASE_ANON_KEY || "",
+  {
+    auth: {
+      storage: AsyncStorage,
+      persistSession: true,
+      // Prevent URL session detection in native environments
+      detectSessionInUrl: false,
+    },
+  },
 );
 
 export default supabase;
