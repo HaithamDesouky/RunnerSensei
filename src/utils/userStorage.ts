@@ -84,7 +84,12 @@ export async function getUser(): Promise<UserProfile> {
           if (cached) {
             try {
               const parsed = JSON.parse(cached);
-              if (parsed && parsed.signedUrl && parsed.expiresAt && parsed.expiresAt > now) {
+              if (
+                parsed &&
+                parsed.signedUrl &&
+                parsed.expiresAt &&
+                parsed.expiresAt > now
+              ) {
                 avatarUri = parsed.signedUrl;
               }
             } catch (e) {
@@ -101,7 +106,10 @@ export async function getUser(): Promise<UserProfile> {
               // store cache with expiry
               const expiresAt = Date.now() + TTL_SECONDS * 1000;
               try {
-                await AsyncStorage.setItem(cacheKey, JSON.stringify({ signedUrl: avatarUri, expiresAt }));
+                await AsyncStorage.setItem(
+                  cacheKey,
+                  JSON.stringify({ signedUrl: avatarUri, expiresAt }),
+                );
               } catch (e) {
                 console.warn("failed to cache avatar signed url", e);
               }

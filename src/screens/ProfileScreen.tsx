@@ -485,7 +485,9 @@ export default function ProfileScreen() {
                       setBadgeModalVisible(true);
                     }}
                   >
-                    <Text style={styles.badgeTxt}>{(BADGE_EMOJI[b] ?? "🏅") + " " + b}</Text>
+                    <Text style={styles.badgeTxt}>
+                      {(BADGE_EMOJI[b] ?? "🏅") + " " + b}
+                    </Text>
                   </Pressable>
                 ))}
             </View>
@@ -562,7 +564,10 @@ export default function ProfileScreen() {
             </View>
             <Text style={styles.badgeModalTitle}>{selectedBadge}</Text>
             <Text style={styles.badgeModalText}>
-              {selectedBadge ? BADGE_DESCRIPTIONS[selectedBadge] ?? "Earn this badge by completing the listed requirement." : ""}
+              {selectedBadge
+                ? (BADGE_DESCRIPTIONS[selectedBadge] ??
+                  "Earn this badge by completing the listed requirement.")
+                : ""}
             </Text>
           </Pressable>
         </Pressable>
