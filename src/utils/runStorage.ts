@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Run } from "../types";
 import {
   addXp,
@@ -6,8 +5,7 @@ import {
   updateStreakWithRunDate,
   incrementWeeklyRun,
 } from "./userStorage";
-
-const RUNS_KEY = "@RunnerSensei:runs";
+import { saveRun as dbSaveRun, getRuns as dbGetRuns } from "./supabaseRuns";
 
 function avgPaceMinPerKmForRun(r: Run) {
   if (!r.distanceMeters || r.distanceMeters <= 0) return null;
@@ -17,11 +15,23 @@ function avgPaceMinPerKmForRun(r: Run) {
 }
 
 export async function saveRun(run: Run): Promise<void> {
-  const existing = await getRuns();
-  const updated = [run, ...existing];
-  await AsyncStorage.setItem(RUNS_KEY, JSON.stringify(updated));
-
+  // persist to Supabase
   try {
+    const existing = await getRuns();
+    // map and save to DB
+    const dbRun = {
+      distance_km: (run.distanceMeters || 0) / 1000,
+      duration_sec: Math.round((run.durationMs || 0) / 1000),
+      avg_pace: null,
+      path: (run.points || []).map((p) => ({
+        lat: p.latitude,
+        lon: p.longitude,
+        ts: new Date(p.timestamp).toISOString(),
+      })),
+      notes: run.notes || run.preRunNote || null,
+    };
+    await dbSaveRun(dbRun as any);
+
     const distanceKm = (run.distanceMeters || 0) / 1000;
     let totalXp = Math.round(distanceKm * 10);
 
@@ -72,30 +82,10 @@ export async function saveRun(run: Run): Promise<void> {
 }
 
 export async function getRuns(): Promise<Run[]> {
-  const raw = await AsyncStorage.getItem(RUNS_KEY);
-  if (!raw) {
-    const now = Date.now();
-    const seeded: Run[] = [0, 1, 2].map((i) => {
-      const distanceKm = +(2 + Math.random() * 1).toFixed(2);
-      const paceMinPerKm = 9 + Math.random() * 6;
-      const durationMin = Math.round(distanceKm * paceMinPerKm);
-      return {
-        id: `seed-${now - i}`,
-        date: new Date(now - (i + 1) * 24 * 60 * 60 * 1000).toISOString(),
-        points: [],
-        distanceMeters: Math.round(distanceKm * 1000),
-        durationMs: durationMin * 60 * 1000,
-        notes: undefined,
-        preRunNote: undefined,
-      } as Run;
-    });
-    await AsyncStorage.setItem(RUNS_KEY, JSON.stringify(seeded));
-    return seeded;
-  }
-
   try {
-    const parsed = JSON.parse(raw) as Run[];
-    if (!Array.isArray(parsed) || parsed.length === 0) {
+    const dbRows: any[] = await dbGetRuns();
+    if (!dbRows || !Array.isArray(dbRows) || dbRows.length === 0) {
+      // fallback: return seeded local runs if DB empty
       const now = Date.now();
       const seeded: Run[] = [0, 1, 2].map((i) => {
         const distanceKm = +(2 + Math.random() * 1).toFixed(2);
@@ -111,11 +101,30 @@ export async function getRuns(): Promise<Run[]> {
           preRunNote: undefined,
         } as Run;
       });
-      await AsyncStorage.setItem(RUNS_KEY, JSON.stringify(seeded));
       return seeded;
     }
-    return parsed;
-  } catch {
+
+    // map DB rows to app Run shape
+    const mapped: Run[] = dbRows.map((r: any) => {
+      return {
+        id: r.id,
+        date: r.created_at || new Date().toISOString(),
+        points: Array.isArray(r.path)
+          ? r.path.map((p: any) => ({
+              latitude: p.lat,
+              longitude: p.lon,
+              timestamp: Date.parse(p.ts),
+            }))
+          : [],
+        distanceMeters: Number(r.distance_km || 0) * 1000,
+        durationMs: Number(r.duration_sec || 0) * 1000,
+        notes: r.notes || undefined,
+        preRunNote: undefined,
+      } as Run;
+    });
+    return mapped;
+  } catch (e) {
+    console.warn("getRuns supabase error", e);
     return [];
   }
 }

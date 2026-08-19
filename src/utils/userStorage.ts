@@ -1,6 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const USER_KEY = "@RunnerSensei:user";
+import supabase from "./supabaseClient";
 
 export interface UserProfile {
   xp: number;
@@ -51,24 +49,90 @@ function startOfDayUTC(date: Date) {
 
 export async function getUser(): Promise<UserProfile> {
   try {
-    const raw = await AsyncStorage.getItem(USER_KEY);
-    if (!raw) return { ...DEFAULT_PROFILE };
-    const parsed = JSON.parse(raw) as UserProfile;
+    const userRes = await supabase.auth.getUser();
+    if (userRes.error || !userRes.data.user) return { ...DEFAULT_PROFILE };
+    const userId = userRes.data.user.id;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+    if (error) {
+      // if not found, return default
+      return { ...DEFAULT_PROFILE };
+    }
+    const p: any = data || {};
+    // Resolve avatar URL: support stored storage paths, file URIs, and absolute URLs
+    let avatarUri: string | null = null;
+    if (p.avatar_url) {
+      const val: string = p.avatar_url;
+      if (val.startsWith("http://") || val.startsWith("https://")) {
+        avatarUri = val;
+      } else if (
+        val.startsWith("file://") ||
+        val.startsWith("content://") ||
+        val.startsWith("data:")
+      ) {
+        avatarUri = val;
+      } else {
+        // assume this is a storage path in the configured bucket; try to create a signed URL
+        try {
+          const { data: signed, error: signErr } = await supabase.storage
+            .from("runnersensei")
+            .createSignedUrl(val, 60 * 60 * 24);
+          if (!signErr && signed?.signedUrl) avatarUri = signed.signedUrl;
+        } catch (e) {
+          console.warn("failed to create signed url for avatar", e);
+        }
+      }
+    }
+
+    console.log({ avatarUri });
+
     return {
       ...DEFAULT_PROFILE,
-      ...parsed,
-      badges: parsed.badges || [],
-      weeklyRuns: parsed.weeklyRuns || {},
+      xp: p.xp || 0,
+      level: p.level || computeLevel(p.xp || 0),
+      badges: p.badges || [],
+      currentStreak: p.current_streak || 0,
+      lastRunDate: p.last_run ? new Date(p.last_run).toISOString() : undefined,
+      weeklyRuns: p.weekly_runs || {},
+      totalRuns: p.total_runs || 0,
+      avatarUri,
+      username: p.username || null,
     };
-  } catch {
+  } catch (err) {
+    console.warn("getUser supabase error", err);
     return { ...DEFAULT_PROFILE };
   }
 }
 
 export async function saveUser(u: UserProfile): Promise<UserProfile> {
-  const copy = { ...u, level: computeLevel(u.xp) };
-  await AsyncStorage.setItem(USER_KEY, JSON.stringify(copy));
-  return copy;
+  try {
+    const userRes = await supabase.auth.getUser();
+    if (userRes.error || !userRes.data.user)
+      throw userRes.error || new Error("No user");
+    const userId = userRes.data.user.id;
+    const copy = { ...u, level: computeLevel(u.xp) };
+    const payload = {
+      id: userId,
+      xp: copy.xp,
+      level: copy.level,
+      username: copy.username,
+      avatar_url: copy.avatarUri,
+      current_streak: copy.currentStreak,
+      last_run: copy.lastRunDate || null,
+      weekly_runs: copy.weeklyRuns,
+      total_runs: copy.totalRuns,
+      badges: copy.badges,
+    };
+    const { data, error } = await supabase.from("profiles").upsert(payload);
+    if (error) throw error;
+    return copy;
+  } catch (err) {
+    console.warn("saveUser supabase error", err);
+    return u;
+  }
 }
 
 export async function resetUser(): Promise<UserProfile> {
