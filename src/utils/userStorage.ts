@@ -113,7 +113,7 @@ export async function getUser(): Promise<UserProfile> {
       }
     }
 
-    console.log({ avatarUri });
+    // avatarUri resolved (cached or freshly signed)
 
     return {
       ...DEFAULT_PROFILE,

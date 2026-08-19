@@ -58,6 +58,8 @@ export default function HomeScreen({ navigation }: Props) {
   const [manualModalVisible, setManualModalVisible] = useState(false);
   const [manualDistanceKm, setManualDistanceKm] = useState("");
   const [manualDurationMin, setManualDurationMin] = useState("");
+  const todayIsoDate = new Date().toISOString().slice(0, 10);
+  const [manualDate, setManualDate] = useState(todayIsoDate);
   const [manualSaving, setManualSaving] = useState(false);
 
   // load user profile for avatar/initials
@@ -90,7 +92,16 @@ export default function HomeScreen({ navigation }: Props) {
     if (!km || km <= 0 || !mins || mins <= 0) return;
     const run: Run = {
       id: `manual-${Date.now()}`,
-      date: new Date().toISOString(),
+      date: (() => {
+        // try parse manualDate (YYYY-MM-DD)
+        try {
+          const d = new Date(manualDate);
+          if (!isNaN(d.getTime())) return d.toISOString();
+        } catch (e) {
+          /* ignore */
+        }
+        return new Date().toISOString();
+      })(),
       points: [],
       distanceMeters: Math.round(km * 1000),
       durationMs: Math.round(mins * 60 * 1000),
@@ -188,6 +199,32 @@ export default function HomeScreen({ navigation }: Props) {
               onChangeText={setManualDurationMin}
               style={styles.input}
             />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginTop: 8,
+              }}
+            >
+              <TextInput
+                placeholder="Date (YYYY-MM-DD)"
+                value={manualDate}
+                onChangeText={setManualDate}
+                style={[styles.input, { flex: 1 }]}
+              />
+              <Pressable
+                onPress={() => setManualDate(todayIsoDate)}
+                style={{
+                  marginLeft: 8,
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  backgroundColor: "#eee",
+                  borderRadius: 8,
+                }}
+              >
+                <Text>Today</Text>
+              </Pressable>
+            </View>
             <View style={{ flexDirection: "row", marginTop: 12 }}>
               <Pressable
                 style={styles.modalBtn}

@@ -36,6 +36,26 @@ const BADGE_EMOJI: Record<string, string> = {
   "Weekly Warrior (5)": "🏆",
 };
 
+const BADGE_DESCRIPTIONS: Record<string, string> = {
+  "First Run": "Awarded when you log your first run.",
+  "5K Club": "Logged a single run of 5 km or more.",
+  "10K Club": "Logged a single run of 10 km or more.",
+  "1K Club": "Logged a single run of 1 km or more.",
+  "2K Club": "Logged a single run of 2 km or more.",
+  "3K Club": "Logged a single run of 3 km or more.",
+  "8K Club": "Logged a single run of 8 km or more.",
+  "12K Club": "Logged a single run of 12 km or more.",
+  "15K Club": "Logged a single run of 15 km or more.",
+  "20K Club": "Logged a single run of 20 km or more.",
+  "25K Club": "Logged a single run of 25 km or more.",
+  "30K Club": "Logged a single run of 30 km or more.",
+  "PR Distance": "Awarded when you set a new personal record for distance.",
+  "PR Pace": "Awarded when you set a new personal record for pace.",
+  "Streak 7 Days": "Maintain a running streak of 7 consecutive days.",
+  "Weekly Warrior (3)": "Logged 3 runs in the same ISO week.",
+  "Weekly Warrior (5)": "Logged 5 runs in the same ISO week.",
+};
+
 export default function ProfileScreen() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const navigation = useNavigation();
@@ -44,6 +64,8 @@ export default function ProfileScreen() {
   const [bestPaceRun, setBestPaceRun] = useState<any | null>(null);
 
   const [modalVisible, setModalVisible] = useState(false);
+  const [badgeModalVisible, setBadgeModalVisible] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
   const { signOut } = useAuth();
 
   useEffect(() => {
@@ -158,11 +180,6 @@ export default function ProfileScreen() {
 
             let blobType = "";
             if (arrayBuffer && arrayBuffer.byteLength) {
-              console.log(
-                "fetched arrayBuffer size",
-                arrayBuffer.byteLength,
-                uri,
-              );
               blobType = "image/jpeg";
             }
 
@@ -180,7 +197,6 @@ export default function ProfileScreen() {
                 const uint8 = base64ToUint8Array(b64);
                 if (uint8) {
                   uploadBody = uint8;
-                  console.log("fallback uint8 size", uint8.length);
                 }
               } catch (e) {
                 console.warn("file-system legacy fallback failed", e);
@@ -199,11 +215,7 @@ export default function ProfileScreen() {
                   uploadBody = new Uint8Array(ab);
                 }
                 blobType = maybeBlob?.type || blobType || "image/jpeg";
-                console.log(
-                  "last-resort blob->arrayBuffer",
-                  uploadBody?.length,
-                  blobType,
-                );
+                // last-resort blob converted to arrayBuffer
               } catch (e) {
                 console.warn("last-resort blob fetch failed", e);
               }
@@ -239,12 +251,7 @@ export default function ProfileScreen() {
 
             const filename = `avatars/${userId}/${Date.now()}${ext}`;
 
-            console.log(
-              "final upload body size",
-              uploadBody.length || "unknown",
-              "contentType",
-              contentType,
-            );
+            // final upload body prepared
 
             const { error: upErr } = await supabase.storage
               .from("runnersensei")
@@ -256,7 +263,6 @@ export default function ProfileScreen() {
               await setAvatarUri(uri);
             } else {
               // store the storage path in the profile and resolve signed URLs when loading
-              console.log("avatar uploaded to storage path:", filename);
               await setAvatarUri(filename);
             }
           } else {
@@ -278,13 +284,27 @@ export default function ProfileScreen() {
     }
   };
 
-  if (!user) return null;
+  if (!user)
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={{ padding: 20 }}>
+          <Text style={{ fontSize: 18, fontWeight: "700" }}>Profile</Text>
+          <Text style={{ color: "#666", marginTop: 8 }}>Loading profile…</Text>
+        </View>
+      </SafeAreaView>
+    );
 
   const progressPct = Math.min(100, Math.round(((user.xp % 500) / 500) * 100));
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 140 }}>
+      <ScrollView
+        contentContainerStyle={{
+          padding: 12,
+          paddingTop: 0,
+          paddingBottom: 140,
+        }}
+      >
         <View style={styles.headerTop}>
           <View style={styles.avatarColumn}>
             <Pressable
@@ -397,8 +417,9 @@ export default function ProfileScreen() {
             >
               <View style={styles.prColLabel}>
                 <View style={styles.prLabelRow}>
-                  <Text style={styles.prLabel}>Longest Distance</Text>
-                  <Text style={styles.prIcon}>{BADGE_EMOJI['PR Distance']}</Text>
+                  <Text style={styles.prLabel}>
+                    Longest Distance {BADGE_EMOJI["PR Distance"]}
+                  </Text>
                 </View>
               </View>
               <View style={styles.prColValue}>
@@ -426,8 +447,9 @@ export default function ProfileScreen() {
             >
               <View style={styles.prColLabel}>
                 <View style={styles.prLabelRow}>
-                  <Text style={styles.prLabel}>Best Pace</Text>
-                  <Text style={styles.prIcon}>{BADGE_EMOJI['PR Pace']}</Text>
+                  <Text style={styles.prLabel}>
+                    Best Pace {BADGE_EMOJI["PR Pace"]}
+                  </Text>
                 </View>
               </View>
               <View style={styles.prColValue}>
@@ -454,11 +476,17 @@ export default function ProfileScreen() {
               {user.badges
                 .filter((b) => b !== "PR Distance" && b !== "PR Pace")
                 .map((b) => (
-                  <View key={b} style={styles.badge}>
-                    <Text style={styles.badgeTxt}>
-                      {(BADGE_EMOJI[b] ?? "🏅") + " " + b}
-                    </Text>
-                  </View>
+                  <Pressable
+                    key={b}
+                    style={styles.badge}
+                    android_ripple={{ color: "#222" }}
+                    onPress={() => {
+                      setSelectedBadge(b);
+                      setBadgeModalVisible(true);
+                    }}
+                  >
+                    <Text style={styles.badgeTxt}>{(BADGE_EMOJI[b] ?? "🏅") + " " + b}</Text>
+                  </Pressable>
                 ))}
             </View>
           )}
@@ -508,6 +536,33 @@ export default function ProfileScreen() {
               style={[styles.xpModalText, { marginTop: 12, fontWeight: "700" }]}
             >
               Tap anywhere to close.
+            </Text>
+          </Pressable>
+        </Pressable>
+      </Modal>
+      <Modal
+        visible={badgeModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setBadgeModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setBadgeModalVisible(false)}
+        >
+          <Pressable style={styles.badgeModalBox} onPress={() => {}}>
+            <View style={{ alignSelf: "flex-end" }}>
+              <Pressable
+                onPress={() => setBadgeModalVisible(false)}
+                style={styles.modalClose}
+                android_ripple={{ color: "#eee" }}
+              >
+                <Text style={styles.modalCloseTxt}>✕</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.badgeModalTitle}>{selectedBadge}</Text>
+            <Text style={styles.badgeModalText}>
+              {selectedBadge ? BADGE_DESCRIPTIONS[selectedBadge] ?? "Earn this badge by completing the listed requirement." : ""}
             </Text>
           </Pressable>
         </Pressable>
@@ -633,8 +688,12 @@ const styles = StyleSheet.create({
   prColLabel: { flex: 2 },
   prColValue: { flex: 1, alignItems: "flex-end", paddingLeft: 8 },
   prColDate: { flex: 1, alignItems: "flex-end", paddingLeft: 8 },
-  prIcon: { marginLeft: 8, fontSize: 16 },
-  prLabelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  prIcon: { marginLeft: 0, fontSize: 16 },
+  prLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -684,6 +743,15 @@ const styles = StyleSheet.create({
   },
   xpModalTitle: { fontWeight: "800", fontSize: 18, marginBottom: 8 },
   xpModalText: { color: "#333", lineHeight: 20 },
+  badgeModalBox: {
+    width: 300,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    alignSelf: "center",
+  },
+  badgeModalTitle: { fontWeight: "800", fontSize: 18, marginBottom: 8 },
+  badgeModalText: { color: "#333", lineHeight: 20 },
   footer: {
     position: "absolute",
     left: 0,
