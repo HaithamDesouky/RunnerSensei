@@ -12,10 +12,9 @@ import { Run } from "../types";
 export async function recomputeUserFromRuns(): Promise<
   ReturnType<typeof getUser>
 > {
-  // Reset profile then replay runs oldest->newest
   await resetUser();
   const runs = await getRuns();
-  // sort oldest first
+
   const ordered = runs
     .slice()
     .sort((a: Run, b: Run) => a.date.localeCompare(b.date));
@@ -26,7 +25,7 @@ export async function recomputeUserFromRuns(): Promise<
   for (const run of ordered) {
     const distanceKm = (run.distanceMeters || 0) / 1000;
     let xp = Math.round(distanceKm * 10);
-    // award km milestone badges
+
     const MILESTONES = [1, 2, 3, 5, 8, 10, 12, 15, 20, 25, 30];
     for (const m of MILESTONES) {
       if (distanceKm >= m) {

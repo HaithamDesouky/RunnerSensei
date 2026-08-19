@@ -62,7 +62,6 @@ export default function HomeScreen({ navigation }: Props) {
   const [manualDate, setManualDate] = useState(todayIsoDate);
   const [manualSaving, setManualSaving] = useState(false);
 
-  // load user profile for avatar/initials
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -93,13 +92,10 @@ export default function HomeScreen({ navigation }: Props) {
     const run: Run = {
       id: `manual-${Date.now()}`,
       date: (() => {
-        // try parse manualDate (YYYY-MM-DD)
         try {
           const d = new Date(manualDate);
           if (!isNaN(d.getTime())) return d.toISOString();
-        } catch (e) {
-          /* ignore */
-        }
+        } catch (e) {}
         return new Date().toISOString();
       })(),
       points: [],
@@ -144,14 +140,13 @@ export default function HomeScreen({ navigation }: Props) {
       if (k) {
         try {
           const ai = await generateSuggestionAI(runs, feeling, k);
-          // AI response should match our local structure — coerce to SenseiSuggestion
+
           setSuggestion(ai as unknown as SenseiSuggestion);
         } catch (e) {
           console.warn("AI suggestion failed:", e);
           setSuggestion(generateSuggestion(runs, feeling));
         }
       } else {
-        // no key saved — show key entry modal
         setKeyModalVisible(true);
       }
     } finally {
@@ -312,7 +307,6 @@ export default function HomeScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* Sensei suggestion modal */}
       <Modal
         visible={suggestion !== null}
         transparent
@@ -384,7 +378,6 @@ export default function HomeScreen({ navigation }: Props) {
         </Pressable>
       </Modal>
 
-      {/* OpenAI API key entry modal */}
       <Modal
         visible={keyModalVisible}
         transparent
@@ -418,7 +411,7 @@ export default function HomeScreen({ navigation }: Props) {
                   await setOpenAIKey(apiKeyInput.trim());
                   setKeyModalVisible(false);
                   setApiKeyInput("");
-                  // attempt AI after saving key
+
                   handleAskSensei();
                 }}
                 activeOpacity={0.85}

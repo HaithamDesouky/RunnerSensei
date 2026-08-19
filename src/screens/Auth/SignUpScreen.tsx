@@ -31,7 +31,6 @@ export default function SignUpScreen() {
     setLoading(true);
     try {
       const resp = await signUp(email.trim(), password);
-      // Show confirmation message to the user after registering
       Alert.alert(
         "Registration",
         "If this email can be registered, we’ve sent a confirmation link. If you already have an account, try signing in or resetting your password.",
@@ -40,7 +39,6 @@ export default function SignUpScreen() {
           { text: "OK", style: "cancel" },
         ],
       );
-      // No explicit navigation here — App's auth state will switch stacks after confirmation
     } catch (e: any) {
       console.warn("SignUp error:", e);
       const raw = (() => {
@@ -56,8 +54,7 @@ export default function SignUpScreen() {
         raw ||
         "Unknown error";
       if (/email rate limit/i.test(msg + " " + raw)) {
-        // Throttled sending confirmation emails — start a short cooldown
-        const cooldown = 60; // seconds
+        const cooldown = 60;
         setCooldownSeconds(cooldown);
         Alert.alert(
           "Too many requests",
@@ -109,7 +106,7 @@ export default function SignUpScreen() {
     if (/[A-Z]/.test(p)) score += 1;
     if (/[0-9]/.test(p)) score += 1;
     if (/[^A-Za-z0-9]/.test(p)) score += 1;
-    return score; // 0..5
+    return score;
   };
 
   const score = passwordScore(password);

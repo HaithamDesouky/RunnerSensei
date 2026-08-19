@@ -10,7 +10,6 @@ export interface SenseiSuggestion {
   warnings: string[];
 }
 
-// Keywords that signal the runner should back off
 const INJURY_KEYWORDS = [
   "pain",
   "hurt",
@@ -71,26 +70,24 @@ function detectFlags(feeling: string): {
 }
 
 function avgDistanceKm(runs: Run[]): number {
-  if (runs.length === 0) return 3; // sensible default for new runners
+  if (runs.length === 0) return 3;
   const total = runs.reduce((s, r) => s + r.distanceMeters / 1000, 0);
   return total / runs.length;
 }
 
 function avgPaceMinPerKm(runs: Run[]): number {
   const valid = runs.filter((r) => r.distanceMeters > 100 && r.durationMs > 0);
-  if (valid.length === 0) return 7; // default 7 min/km
+  if (valid.length === 0) return 7;
   const paces = valid.map(
     (r) => r.durationMs / 1000 / 60 / (r.distanceMeters / 1000),
   );
   return paces.reduce((a, b) => a + b, 0) / paces.length;
 }
 
-/** Returns the most recent N runs sorted newest-first. */
 function recentRuns(runs: Run[], n: number): Run[] {
   return [...runs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, n);
 }
 
-/** Days since the most recent run (0 = today). Returns null if no runs. */
 function daysSinceLastRun(runs: Run[]): number | null {
   if (runs.length === 0) return null;
   const latest = recentRuns(runs, 1)[0];
@@ -115,13 +112,11 @@ export function generateSuggestion(
   const basePace = avgPaceMinPerKm(recent5);
   const daysSince = daysSinceLastRun(runs);
 
-  // Determine intensity multiplier from feeling + rest days
   let intensity: Intensity;
   let distMultiplier: number;
-  let paceMultiplier: number; // >1 = slower
+  let paceMultiplier: number;
 
   if (flags.injury) {
-    // Possible injury → rest or very easy
     intensity = "Rest";
     distMultiplier = 0;
     paceMultiplier = 1.2;
@@ -130,19 +125,16 @@ export function generateSuggestion(
     distMultiplier = 0.6;
     paceMultiplier = 1.15;
   } else if (flags.great) {
-    // Feeling strong + well rested → push a bit
     const wellRested = daysSince !== null && daysSince >= 1;
     intensity = wellRested ? "Strong" : "Moderate";
     distMultiplier = wellRested ? 1.15 : 1.05;
     paceMultiplier = 0.95;
   } else {
-    // Neutral
     intensity = daysSince !== null && daysSince >= 2 ? "Moderate" : "Easy";
     distMultiplier = daysSince !== null && daysSince >= 2 ? 1.0 : 0.8;
     paceMultiplier = 1.0;
   }
 
-  // Apply 10% rule cap on new runners (first 5 runs) — don't exceed 3.5 km
   const cappedBase = runs.length < 5 ? Math.min(baseDistKm, 3.5) : baseDistKm;
   const targetDistanceKm = Math.max(
     0,

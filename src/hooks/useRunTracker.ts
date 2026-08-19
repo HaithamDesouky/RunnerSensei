@@ -24,7 +24,6 @@ export function useRunTracker(): UseRunTrackerReturn {
   const locationSub = useRef<Location.LocationSubscription | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(0);
-  // Accumulates ms across pause/resume so timer never drifts
   const accumulatedRef = useRef(0);
   const isPausedRef = useRef(false);
 

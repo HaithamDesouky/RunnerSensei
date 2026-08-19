@@ -16,10 +16,9 @@ function avgPaceMinPerKmForRun(r: Run) {
 }
 
 export async function saveRun(run: Run): Promise<void> {
-  // persist to Supabase
   try {
     const existing = await getRuns();
-    // map and save to DB
+
     const dbRun = {
       distance_km: (run.distanceMeters || 0) / 1000,
       duration_sec: Math.round((run.durationMs || 0) / 1000),
@@ -36,7 +35,6 @@ export async function saveRun(run: Run): Promise<void> {
     const distanceKm = (run.distanceMeters || 0) / 1000;
     let totalXp = Math.round(distanceKm * 10);
 
-    // award km milestone badges
     const MILESTONES = [1, 2, 3, 5, 8, 10, 12, 15, 20, 25, 30];
     for (const m of MILESTONES) {
       if (distanceKm >= m) {
@@ -88,7 +86,6 @@ export async function getRuns(): Promise<Run[]> {
   try {
     const dbRows: any[] = await dbGetRuns();
     if (!dbRows || !Array.isArray(dbRows) || dbRows.length === 0) {
-      // fallback: return seeded local runs if DB empty
       const now = Date.now();
       const seeded: Run[] = [0, 1, 2].map((i) => {
         const distanceKm = +(2 + Math.random() * 1).toFixed(2);
@@ -107,7 +104,6 @@ export async function getRuns(): Promise<Run[]> {
       return seeded;
     }
 
-    // map DB rows to app Run shape
     const mapped: Run[] = dbRows.map((r: any) => {
       return {
         id: r.id,

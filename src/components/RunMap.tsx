@@ -51,7 +51,6 @@ function buildLeafletHTML(points: RunPoint[], followUser: boolean): string {
 const RunMap: React.FC<Props> = ({ points, followUser = false, style }) => {
   const webViewRef = useRef<WebView>(null);
 
-  // Push updated map state into the WebView when points change
   useEffect(() => {
     if (!webViewRef.current || points.length === 0) return;
     const last = points[points.length - 1];

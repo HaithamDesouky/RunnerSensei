@@ -83,7 +83,7 @@ function AppRoutes() {
     })();
   }, []);
 
-  if (loading) return null; // or a splash screen
+  if (loading) return null;
 
   return (
     <NavigationContainer>

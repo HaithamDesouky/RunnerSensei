@@ -1,8 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import { Run } from "../types";
 
-// Use SecureStore to keep the OpenAI key in the platform keychain/keystore.
-// SecureStore keys must only contain alphanumeric characters, '.', '-', and '_'.
 export const OPENAI_STORAGE_KEY = "RunnerSensei_openaiKey";
 
 export async function setOpenAIKey(key: string | null) {
@@ -22,8 +20,6 @@ export interface AISuggestion {
   warnings: string[];
 }
 
-/** Calls OpenAI Chat Completions to generate a Sensei suggestion.
- * Returns parsed JSON matching AISuggestion. Throws on errors. */
 export async function generateSuggestionAI(
   runs: Run[],
   feeling: string,
@@ -50,11 +46,9 @@ export async function generateSuggestionAI(
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    // gpt-5-mini currently only supports the default temperature (1). Use 1 to avoid API errors.
+
     temperature: 1,
   };
-
-  // request body prepared
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -74,12 +68,10 @@ export async function generateSuggestionAI(
   const content = j?.choices?.[0]?.message?.content;
   if (!content) throw new Error("Empty OpenAI response");
 
-  // The model is instructed to return pure JSON; try to parse the first JSON object found
   try {
     const parsed = JSON.parse(content);
     return parsed as AISuggestion;
   } catch (e) {
-    // Try to extract JSON substring
     const m = content.match(/\{[\s\S]*\}/);
     if (m) return JSON.parse(m[0]) as AISuggestion;
     throw new Error("Failed to parse OpenAI response as JSON");
