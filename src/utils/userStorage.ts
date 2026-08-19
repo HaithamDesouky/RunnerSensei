@@ -48,6 +48,9 @@ function startOfDayUTC(date: Date) {
 }
 
 export async function getUser(): Promise<UserProfile> {
+  if (typeof window !== "undefined" && (window as any).__TEST_PROFILE__) {
+    return (window as any).__TEST_PROFILE__ as UserProfile;
+  }
   try {
     const userRes = await supabase.auth.getUser();
     if (userRes.error || !userRes.data.user) return { ...DEFAULT_PROFILE };
