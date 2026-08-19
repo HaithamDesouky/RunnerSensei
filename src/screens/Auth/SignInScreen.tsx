@@ -22,7 +22,6 @@ export default function SignInScreen() {
     setLoading(true);
     try {
       await signIn(email.trim(), password);
-      // No explicit navigation here — App's auth state will switch stacks
     } catch (e: any) {
       Alert.alert("Sign-in failed", e.message || String(e));
     } finally {

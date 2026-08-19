@@ -70,7 +70,6 @@ export default function ActiveRunScreen({ navigation, route }: Props) {
             navigation.replace("Home");
           };
 
-          // If this was a suggested run and user hit the target, show celebration
           const target = suggestedTargetKm;
           if (target && stats.distanceKm >= target - 0.01) {
             setShowConfetti(true);

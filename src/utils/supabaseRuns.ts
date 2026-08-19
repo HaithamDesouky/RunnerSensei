@@ -17,7 +17,7 @@ export type Run = {
   distance_km: number;
   duration_sec: number;
   avg_pace?: number;
-  path?: Array<{ lat: number; lon: number; ts: string }>; // or gps points
+  path?: Array<{ lat: number; lon: number; ts: string }>;
   notes?: string;
 };
 
@@ -26,13 +26,12 @@ export async function saveRun(run: Run) {
   if (userRes.error || !userRes.data.user)
     throw userRes.error || new Error("No user");
   const userId = userRes.data.user.id;
-  // Try normal client insert first
+
   const { data, error } = await supabase
     .from("runs")
     .insert([{ user_id: userId, ...run }]);
   if (!error) return data;
 
-  // If insert failed due to RLS / permission, try REST fallback using user's access token
   if (error && error.code === "42501") {
     try {
       const sess = await supabase.auth.getSession();
@@ -58,7 +57,6 @@ export async function saveRun(run: Run) {
       const body = await resp.json();
       return body;
     } catch (e) {
-      // rethrow original error if fallback also fails
       throw error;
     }
   }
@@ -79,7 +77,6 @@ export async function getRuns(limit = 50) {
     .limit(limit);
   if (!error) return data;
 
-  // fallback: use REST with user's access token
   if (error && error.code === "42501") {
     try {
       const sess = await supabase.auth.getSession();
@@ -94,7 +91,7 @@ export async function getRuns(limit = 50) {
         limit: String(limit),
         user_id: `eq.${userId}`,
       } as any);
-      // Note: PostgREST expects filters as query string like user_id=eq.<id>
+
       const url = `${SUPABASE_URL}/rest/v1/runs?select=*&user_id=eq.${encodeURIComponent(
         userId,
       )}&order=created_at.desc&limit=${encodeURIComponent(String(limit))}`;

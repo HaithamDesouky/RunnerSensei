@@ -6,7 +6,6 @@ function toRad(deg: number): number {
   return (deg * Math.PI) / 180;
 }
 
-/** Haversine formula — distance in metres between two GPS points. */
 export function haversineDistance(a: RunPoint, b: RunPoint): number {
   const dLat = toRad(b.latitude - a.latitude);
   const dLon = toRad(b.longitude - a.longitude);

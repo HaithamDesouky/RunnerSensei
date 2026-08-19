@@ -6,8 +6,8 @@ export interface UserProfile {
   level: number;
   badges: string[];
   currentStreak: number;
-  lastRunDate?: string; // ISO
-  weeklyRuns: Record<string, number>; // isoWeek -> count
+  lastRunDate?: string;
+  weeklyRuns: Record<string, number>;
   totalRuns: number;
   avatarUri?: string | null;
   username?: string | null;
@@ -31,7 +31,6 @@ function computeLevel(xp: number) {
 
 function getIsoWeekKey(dateIso: string) {
   const d = new Date(dateIso);
-  // ISO week algorithm (UTC-based)
   const target = new Date(d.valueOf());
   const dayNr = (d.getUTCDay() + 6) % 7;
   target.setUTCDate(target.getUTCDate() - dayNr + 3);
@@ -59,11 +58,10 @@ export async function getUser(): Promise<UserProfile> {
       .eq("id", userId)
       .single();
     if (error) {
-      // if not found, return default
       return { ...DEFAULT_PROFILE };
     }
     const p: any = data || {};
-    // Resolve avatar URL: support stored storage paths, file URIs, absolute URLs, and cached signed URLs
+
     let avatarUri: string | null = null;
     if (p.avatar_url) {
       const val: string = p.avatar_url;
@@ -76,7 +74,6 @@ export async function getUser(): Promise<UserProfile> {
       ) {
         avatarUri = val;
       } else {
-        // assume this is a storage path in the configured bucket; check cache first
         try {
           const cacheKey = `avatar_cache_${userId}`;
           const cached = await AsyncStorage.getItem(cacheKey);
@@ -92,18 +89,16 @@ export async function getUser(): Promise<UserProfile> {
               ) {
                 avatarUri = parsed.signedUrl;
               }
-            } catch (e) {
-              // ignore parse errors
-            }
+            } catch (e) {}
           }
           if (!avatarUri) {
-            const TTL_SECONDS = 60 * 60 * 24; // 24 hours
+            const TTL_SECONDS = 60 * 60 * 24;
             const { data: signed, error: signErr } = await supabase.storage
               .from("runnersensei")
               .createSignedUrl(val, TTL_SECONDS);
             if (!signErr && signed?.signedUrl) {
               avatarUri = signed.signedUrl;
-              // store cache with expiry
+
               const expiresAt = Date.now() + TTL_SECONDS * 1000;
               try {
                 await AsyncStorage.setItem(
@@ -120,8 +115,6 @@ export async function getUser(): Promise<UserProfile> {
         }
       }
     }
-
-    // avatarUri resolved (cached or freshly signed)
 
     return {
       ...DEFAULT_PROFILE,
@@ -221,7 +214,7 @@ export async function updateStreakWithRunDate(runDateIso: string): Promise<{
     );
     if (diffDays === 1) {
       newStreak = (u.currentStreak || 0) + 1;
-      bonusXp += 20; // daily streak bonus
+      bonusXp += 20;
     } else if (diffDays > 1) {
       newStreak = 1;
     } else if (diffDays === 0) {

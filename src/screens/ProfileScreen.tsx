@@ -73,7 +73,7 @@ export default function ProfileScreen() {
     getUser().then((u) => {
       if (mounted) setUser(u);
     });
-    // compute PRs
+
     (async () => {
       try {
         const runs = await getRuns();
@@ -106,7 +106,6 @@ export default function ProfileScreen() {
 
   const pickImage = async () => {
     try {
-      // Use dynamic import to load the package at runtime.
       const ImagePicker = await import("expo-image-picker");
 
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -125,7 +124,6 @@ export default function ProfileScreen() {
         aspect: [1, 1],
       });
 
-      // support multiple response shapes across versions
       let uri: string | undefined;
       if (
         !(res as any).canceled &&
@@ -139,11 +137,9 @@ export default function ProfileScreen() {
 
       if (uri) {
         try {
-          // upload to Supabase Storage
           const userRes = await supabase.auth.getUser();
           const userId = userRes.data.user?.id;
           if (userId) {
-            // fetch the URI and try to get an ArrayBuffer (works better on Android/Expo)
             const response = await fetch(uri);
             let arrayBuffer: ArrayBuffer | null = null;
             try {
@@ -159,7 +155,6 @@ export default function ProfileScreen() {
               console.warn("response.arrayBuffer failed", e);
             }
 
-            // helper to convert base64 to Uint8Array
             const base64ToUint8Array = (b64: string) => {
               try {
                 if (typeof atob === "function") {
@@ -183,7 +178,6 @@ export default function ProfileScreen() {
               blobType = "image/jpeg";
             }
 
-            // If arrayBuffer is missing or very small, try the legacy FileSystem base64 fallback
             let uploadBody: any = null;
             if (
               !arrayBuffer ||
@@ -205,7 +199,6 @@ export default function ProfileScreen() {
               uploadBody = new Uint8Array(arrayBuffer);
             }
 
-            // If we still don't have a proper upload body, try a blob fetch as last resort
             if (!uploadBody) {
               try {
                 const r2: any = await fetch(uri);
@@ -215,13 +208,11 @@ export default function ProfileScreen() {
                   uploadBody = new Uint8Array(ab);
                 }
                 blobType = maybeBlob?.type || blobType || "image/jpeg";
-                // last-resort blob converted to arrayBuffer
               } catch (e) {
                 console.warn("last-resort blob fetch failed", e);
               }
             }
 
-            // fallback to saving URI in profile if nothing worked
             if (!uploadBody) {
               console.warn(
                 "no upload body could be created, saving local uri instead",
@@ -232,7 +223,6 @@ export default function ProfileScreen() {
               return;
             }
 
-            // ensure contentType and ext determination will use blobType when available
             let contentType = blobType || "";
             let ext = "";
             if (contentType) {
@@ -251,18 +241,14 @@ export default function ProfileScreen() {
 
             const filename = `avatars/${userId}/${Date.now()}${ext}`;
 
-            // final upload body prepared
-
             const { error: upErr } = await supabase.storage
               .from("runnersensei")
               .upload(filename, uploadBody, { contentType, upsert: true });
 
             if (upErr) {
               console.warn("avatar upload failed", upErr);
-              // fallback: save local uri
               await setAvatarUri(uri);
             } else {
-              // store the storage path in the profile and resolve signed URLs when loading
               await setAvatarUri(filename);
             }
           } else {
@@ -403,7 +389,6 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        {/* Personal Records */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Personal Records</Text>
           {bestDistanceRun ? (
@@ -607,7 +592,7 @@ function formatPace(r: any) {
   if (!r || !r.distanceMeters || r.distanceMeters <= 0) return "—";
   const minutes = (r.durationMs || 0) / 60000;
   const km = (r.distanceMeters || 0) / 1000;
-  const pace = minutes / km; // minutes per km
+  const pace = minutes / km;
   const mins = Math.floor(pace);
   const secs = Math.round((pace - mins) * 60);
   return `${mins}:${secs.toString().padStart(2, "0")} /km`;
