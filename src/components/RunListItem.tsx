@@ -39,8 +39,7 @@ const RunListItem: React.FC<Props> = ({ run, onPress, onEdit }) => {
             >
               <Text style={styles.editTxt}>✏️</Text>
             </TouchableOpacity>
-          )}{" "}
-          npm cache clean --force
+          )}
         </View>
       </View>
       <Text style={styles.sub}>
