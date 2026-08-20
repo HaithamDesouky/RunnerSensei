@@ -62,6 +62,10 @@ export default function ProfileScreen() {
   const [xpModalVisible, setXpModalVisible] = useState(false);
   const [bestDistanceRun, setBestDistanceRun] = useState<any | null>(null);
   const [bestPaceRun, setBestPaceRun] = useState<any | null>(null);
+  const [weeklyDistanceMeters, setWeeklyDistanceMeters] = useState(0);
+  const [weeklyDurationMs, setWeeklyDurationMs] = useState(0);
+  const [totalDistanceMeters, setTotalDistanceMeters] = useState(0);
+  const [totalDurationMs, setTotalDurationMs] = useState(0);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [badgeModalVisible, setBadgeModalVisible] = useState(false);
@@ -86,14 +90,42 @@ export default function ProfileScreen() {
           const km = (r.distanceMeters || 0) / 1000;
           return minutes / km;
         };
+        let weeklyDist = 0;
+        let weeklyDur = 0;
+        let totalDist = 0;
+        let totalDur = 0;
+
+        const today = new Date();
+        const day = today.getDay();
+        // ISO week starts on Monday; compute Monday of current week
+        const daysSinceMonday = (day + 6) % 7;
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - daysSinceMonday);
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 7);
+
         for (const r of runs) {
+          const rd = new Date(r.date);
+          if (rd >= weekStart && rd < weekEnd) {
+            weeklyDist += r.distanceMeters || 0;
+            weeklyDur += r.durationMs || 0;
+          }
+          totalDist += r.distanceMeters || 0;
+          totalDur += r.durationMs || 0;
+
           if ((r.distanceMeters || 0) > (bestDist.distanceMeters || 0))
             bestDist = r;
           if (pace(r) < pace(bestPace)) bestPace = r;
         }
+
         if (mounted) {
           setBestDistanceRun(bestDist);
           setBestPaceRun(bestPace);
+          setWeeklyDistanceMeters(weeklyDist);
+          setWeeklyDurationMs(weeklyDur);
+          setTotalDistanceMeters(totalDist);
+          setTotalDurationMs(totalDur);
         }
       } catch (e) {
         console.warn("compute PRs failed", e);
@@ -483,12 +515,47 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Weekly Summary</Text>
+          <Text style={styles.cardTitle}>📆 Weekly Summary</Text>
           <Text style={styles.small}>
-            Runs this week:{" "}
-            {Object.values(user.weeklyRuns || {}).slice(-1)[0] || 0}
+            🏃 Runs this week:{" "}
+            <Text style={styles.statValueBold}>
+              {Object.values(user.weeklyRuns || {}).slice(-1)[0] || 0}
+            </Text>
           </Text>
-          <Text style={styles.small}>Total runs: {user.totalRuns || 0}</Text>
+          <Text style={styles.small}>
+            📏 Distance this week:{" "}
+            <Text style={styles.statValueBold}>
+              {(weeklyDistanceMeters / 1000).toFixed(2)}
+            </Text>
+            <Text> km</Text>
+          </Text>
+          <Text style={styles.small}>
+            ⏱️ Time this week:{" "}
+            <Text style={styles.statValueBold}>
+              {formatDurationLong(weeklyDurationMs)}
+            </Text>
+          </Text>
+          <Text style={styles.small}>
+            📊 Total runs:{" "}
+            <Text style={styles.statValueBold}>{user.totalRuns || 0}</Text>
+          </Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>🏁 All time</Text>
+          <Text style={styles.small}>
+            📏 Total distance:{" "}
+            <Text style={styles.statValueBold}>
+              {(totalDistanceMeters / 1000).toFixed(2)}
+            </Text>
+            <Text> km</Text>
+          </Text>
+          <Text style={styles.small}>
+            ⏱️ Total time:{" "}
+            <Text style={styles.statValueBold}>
+              {formatDurationLong(totalDurationMs)}
+            </Text>
+          </Text>
         </View>
 
         <View style={{ height: 40 }} />
@@ -599,6 +666,16 @@ function formatPace(r: any) {
   const mins = Math.floor(pace);
   const secs = Math.round((pace - mins) * 60);
   return `${mins}:${secs.toString().padStart(2, "0")} /km`;
+}
+
+function formatDurationLong(ms: number) {
+  const totalSeconds = Math.floor((ms || 0) / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
 }
 
 const styles = StyleSheet.create({
@@ -743,6 +820,7 @@ const styles = StyleSheet.create({
     padding: 16,
     alignSelf: "center",
   },
+  statValueBold: { fontWeight: "700" },
   badgeModalTitle: { fontWeight: "800", fontSize: 18, marginBottom: 8 },
   badgeModalText: { color: "#333", lineHeight: 20 },
   footer: {

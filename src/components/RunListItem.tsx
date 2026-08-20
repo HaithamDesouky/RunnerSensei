@@ -6,9 +6,10 @@ import { formatDuration, formatPace } from "../utils/geo";
 interface Props {
   run: Run;
   onPress: (r: Run) => void;
+  onEdit?: (r: Run) => void;
 }
 
-const RunListItem: React.FC<Props> = ({ run, onPress }) => {
+const RunListItem: React.FC<Props> = ({ run, onPress, onEdit }) => {
   const distanceKm = run.distanceMeters / 1000;
   const pace =
     distanceKm > 0.001 ? run.durationMs / 1000 / 60 / distanceKm : null;
@@ -27,7 +28,20 @@ const RunListItem: React.FC<Props> = ({ run, onPress }) => {
     >
       <View style={styles.row}>
         <Text style={styles.date}>{date}</Text>
-        <Text style={styles.dist}>{distanceKm.toFixed(2)} km</Text>
+        <View style={styles.rightRow}>
+          <Text style={styles.dist}>{distanceKm.toFixed(2)} km</Text>
+          {onEdit && (
+            <TouchableOpacity
+              style={styles.editBtn}
+              onPress={() => onEdit(run)}
+              activeOpacity={0.7}
+              accessibilityLabel="Edit Run"
+            >
+              <Text style={styles.editTxt}>✏️</Text>
+            </TouchableOpacity>
+          )}{" "}
+          npm cache clean --force
+        </View>
       </View>
       <Text style={styles.sub}>
         {formatDuration(run.durationMs)} · {formatPace(pace)}
@@ -54,9 +68,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 4,
   },
+  rightRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   date: { fontSize: 13, color: "#666" },
   dist: { fontSize: 18, fontWeight: "700", color: "#E84545" },
   sub: { fontSize: 13, color: "#333" },
+  editBtn: {
+    marginLeft: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: "#eee",
+    borderRadius: 8,
+  },
+  editTxt: { color: "#333", fontWeight: "700" },
 });
 
 export default RunListItem;

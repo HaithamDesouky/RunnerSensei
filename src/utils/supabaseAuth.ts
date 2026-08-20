@@ -20,6 +20,14 @@ export async function signOut() {
   if (error) throw error;
 }
 
+export async function sendPasswordReset(email: string, redirectTo?: string) {
+  const opts = redirectTo ? { redirectTo } : undefined;
+  // Supabase v2 method
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, opts as any);
+  if (error) throw error;
+  return data;
+}
+
 export function getCurrentUser() {
   return supabase.auth.getUser();
 }

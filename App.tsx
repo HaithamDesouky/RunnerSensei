@@ -20,6 +20,7 @@ export type RootStackParamList = {
   ActiveRun: { preRunNote?: string; suggestedTargetKm?: number };
   RunDetail: { runId: string };
   Profile: undefined;
+  AllRuns: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -51,6 +52,11 @@ function MainStack() {
         options={{ title: "Profile" }}
       />
       <Stack.Screen
+        name="AllRuns"
+        component={require("./src/screens/AllRunsScreen").default}
+        options={{ title: "All Runs" }}
+      />
+      <Stack.Screen
         name="RunDetail"
         component={RunDetailScreen}
         options={{ title: "Run Detail" }}
@@ -64,6 +70,10 @@ function AuthStackScreens() {
     <AuthStack.Navigator screenOptions={{ headerShown: false }}>
       <AuthStack.Screen name="SignIn" component={SignInScreen} />
       <AuthStack.Screen name="SignUp" component={SignUpScreen} />
+      <AuthStack.Screen
+        name="ForgotPassword"
+        component={require("./src/screens/Auth/ForgotPasswordScreen").default}
+      />
     </AuthStack.Navigator>
   );
 }
