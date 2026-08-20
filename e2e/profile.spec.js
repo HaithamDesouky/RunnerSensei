@@ -83,7 +83,6 @@ test("profile page shows user info and badges", async ({ page }) => {
     }),
     SUPABASE_STORAGE_KEY,
   );
-  console.log("DEBUG:", JSON.stringify(debug, null, 2));
 
   // Open profile (header avatar or fallback)
   const openProfile = page.locator('[aria-label="Open Profile"]');
@@ -100,7 +99,6 @@ test("profile page shows user info and badges", async ({ page }) => {
   });
   // Debug dump of visible text
   const bodyText = await page.evaluate(() => document.body.innerText);
-  console.log("BODYTEXT:\n" + bodyText);
   // Username is rendered as an avatar initial on web; check the labeled element
   await expect(
     page.locator('[aria-label="profile-initial"]').first(),

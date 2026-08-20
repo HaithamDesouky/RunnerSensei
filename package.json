@@ -16,6 +16,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.2",
+    "react-native-common-date-picker": "^2.3.9",
     "react-native-maps": "1.27.2",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
@@ -23,11 +24,11 @@
     "react-native-webview": "13.16.1"
   },
   "devDependencies": {
-    "@types/react": "~19.2.2",
-    "typescript": "~6.0.3",
     "@playwright/test": "^1.40.0",
-    "playwright": "^1.40.0",
+    "@types/react": "~19.2.2",
     "cross-env": "^7.0.3",
+    "playwright": "^1.40.0",
+    "typescript": "~6.0.3",
     "wait-on": "^9.1.0"
   },
   "scripts": {
@@ -40,4 +41,3 @@
   },
   "private": true
 }
-

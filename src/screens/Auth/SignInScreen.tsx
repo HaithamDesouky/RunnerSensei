@@ -15,15 +15,33 @@ export default function SignInScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { signIn } = useAuth();
   const nav = useNavigation();
 
   const onSubmit = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       await signIn(email.trim(), password);
     } catch (e: any) {
-      Alert.alert("Sign-in failed", e.message || String(e));
+      const raw = e || {};
+      const msg =
+        raw.message ||
+        raw.error?.message ||
+        raw.data?.message ||
+        raw.response?.data?.message ||
+        (typeof raw === "string" ? raw : null) ||
+        JSON.stringify(raw);
+
+      if (
+        raw.code === "invalid_credentials" ||
+        /invalid|credentials|password|email/i.test(String(msg))
+      ) {
+        setErrorMessage("Email or password is incorrect.");
+      } else {
+        setErrorMessage(String(msg || "Sign-in failed"));
+      }
     } finally {
       setLoading(false);
     }
@@ -49,9 +67,18 @@ export default function SignInScreen() {
           placeholder="Password"
           style={styles.input}
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(t) => {
+            setPassword(t);
+            if (errorMessage) setErrorMessage(null);
+          }}
           secureTextEntry
         />
+        <Pressable onPress={() => nav.navigate("ForgotPassword" as never)}>
+          <Text style={[styles.link, { textAlign: "right", marginTop: 6 }]}>Forgot password?</Text>
+        </Pressable>
+        {errorMessage ? (
+          <Text style={styles.errorTxt}>{errorMessage}</Text>
+        ) : null}
         <Pressable
           style={[styles.btn, loading && { opacity: 0.6 }]}
           onPress={onSubmit}
@@ -96,5 +123,6 @@ const styles = StyleSheet.create({
   },
   btnTxt: { color: "#fff", fontWeight: "700" },
   link: { color: "#1a1a2e", textAlign: "center", marginTop: 12 },
+  errorTxt: { color: "#E84545", marginBottom: 8 },
 });
 

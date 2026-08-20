@@ -115,3 +115,86 @@ export async function getRuns(limit = 50) {
   throw error;
 }
 
+export async function updateRun(id: string, patch: Partial<Run>) {
+  const userRes = await supabase.auth.getUser();
+  if (userRes.error || !userRes.data.user)
+    throw userRes.error || new Error("No user");
+  const { data, error } = await supabase
+    .from("runs")
+    .update(patch)
+    .eq("id", id)
+    .select()
+    .single();
+  if (!error) return data;
+
+  if (error && error.code === "42501") {
+    try {
+      const sess = await supabase.auth.getSession();
+      const accessToken = (sess as any)?.data?.session?.access_token;
+      if (!accessToken) throw new Error("No access token for REST fallback");
+      if (!SUPABASE_URL || !SUPABASE_ANON_KEY)
+        throw new Error("Supabase URL or anon key not configured");
+
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/runs?id=eq.${encodeURIComponent(
+        id,
+      )}`, {
+        method: "PATCH",
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify(patch),
+      });
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(`REST patch failed: ${resp.status} ${text}`);
+      }
+      const body = await resp.json();
+      return body?.[0];
+    } catch (e) {
+      throw error;
+    }
+  }
+
+  throw error;
+}
+
+export async function deleteRun(id: string) {
+  const userRes = await supabase.auth.getUser();
+  if (userRes.error || !userRes.data.user)
+    throw userRes.error || new Error("No user");
+  const { data, error } = await supabase.from("runs").delete().eq("id", id);
+  if (!error) return data;
+
+  if (error && error.code === "42501") {
+    try {
+      const sess = await supabase.auth.getSession();
+      const accessToken = (sess as any)?.data?.session?.access_token;
+      if (!accessToken) throw new Error("No access token for REST fallback");
+      if (!SUPABASE_URL || !SUPABASE_ANON_KEY)
+        throw new Error("Supabase URL or anon key not configured");
+
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/runs?id=eq.${encodeURIComponent(
+        id,
+      )}`, {
+        method: "DELETE",
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(`REST delete failed: ${resp.status} ${text}`);
+      }
+      return;
+    } catch (e) {
+      throw error;
+    }
+  }
+
+  throw error;
+}
+

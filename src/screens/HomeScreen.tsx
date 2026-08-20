@@ -11,13 +11,14 @@ import {
   ScrollView,
   Pressable,
   Image,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
 import { RootStackParamList } from "../../App";
 import { Run } from "../types";
-import { getRuns, saveRun } from "../utils/runStorage";
+import { getRuns, saveRun, updateRun, deleteRun } from "../utils/runStorage";
 import { useRunTrackerContext } from "../context/RunTrackerContext";
 import RunListItem from "../components/RunListItem";
 import RunMap from "../components/RunMap";
@@ -31,6 +32,7 @@ import {
   setOpenAIKey,
   generateSuggestionAI,
 } from "../utils/openai";
+import { DatePicker } from "react-native-common-date-picker";
 
 const INTENSITY_COLORS: Record<Intensity, { backgroundColor: string }> = {
   Rest: { backgroundColor: "#9e9e9e" },
@@ -61,6 +63,15 @@ export default function HomeScreen({ navigation }: Props) {
   const todayIsoDate = new Date().toISOString().slice(0, 10);
   const [manualDate, setManualDate] = useState(todayIsoDate);
   const [manualSaving, setManualSaving] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingRun, setEditingRun] = useState<Run | null>(null);
+  const [editDistanceKm, setEditDistanceKm] = useState("");
+  const [editDurationMin, setEditDurationMin] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editDate, setEditDate] = useState(todayIsoDate);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showManualDatePicker, setShowManualDatePicker] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -172,6 +183,58 @@ export default function HomeScreen({ navigation }: Props) {
       });
   };
 
+  const openEditModal = (r: Run) => {
+    setEditingRun(r);
+    setEditDistanceKm(((r.distanceMeters || 0) / 1000).toFixed(2));
+    setEditDurationMin(Math.round((r.durationMs || 0) / 60000).toString());
+    setEditNotes(r.notes || "");
+    try {
+      const d = new Date(r.date);
+      if (!isNaN(d.getTime())) setEditDate(d.toISOString().slice(0, 10));
+      else setEditDate(todayIsoDate);
+    } catch (e) {
+      setEditDate(todayIsoDate);
+    }
+    setEditModalVisible(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingRun || editSaving) return;
+    const km = parseFloat(editDistanceKm);
+    const mins = parseFloat(editDurationMin);
+    if (!km || km <= 0 || !mins || mins <= 0) return;
+    setEditSaving(true);
+    try {
+      await updateRun(editingRun.id, {
+        distanceMeters: Math.round(km * 1000),
+        durationMs: Math.round(mins * 60 * 1000),
+        notes: editNotes || undefined,
+        date: editDate,
+      });
+      const data = await getRuns();
+      setRuns(data);
+      setEditModalVisible(false);
+      setEditingRun(null);
+    } catch (e) {
+      console.warn("save edit failed", e);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleDeleteRun = async () => {
+    if (!editingRun) return;
+    try {
+      await deleteRun(editingRun.id);
+      const data = await getRuns();
+      setRuns(data);
+      setEditModalVisible(false);
+      setEditingRun(null);
+    } catch (e) {
+      console.warn("delete run failed", e);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <Modal visible={manualModalVisible} transparent animationType="slide">
@@ -201,12 +264,21 @@ export default function HomeScreen({ navigation }: Props) {
                 marginTop: 8,
               }}
             >
-              <TextInput
-                placeholder="Date (YYYY-MM-DD)"
-                value={manualDate}
-                onChangeText={setManualDate}
-                style={[styles.input, { flex: 1 }]}
-              />
+              {Platform.OS === "web" ? (
+                <TextInput
+                  placeholder="Date (YYYY-MM-DD)"
+                  value={manualDate}
+                  onChangeText={setManualDate}
+                  style={[styles.input, { flex: 1 }]}
+                />
+              ) : (
+                <Pressable
+                  onPress={() => setShowManualDatePicker(true)}
+                  style={[styles.input, { flex: 1, justifyContent: "center" }]}
+                >
+                  <Text>{manualDate}</Text>
+                </Pressable>
+              )}
               <Pressable
                 onPress={() => setManualDate(todayIsoDate)}
                 style={{
@@ -243,7 +315,152 @@ export default function HomeScreen({ navigation }: Props) {
               </Pressable>
             </View>
           </View>
+          <Modal
+            visible={showManualDatePicker}
+            transparent
+            animationType="slide"
+          >
+            <Pressable
+              style={styles.overlay}
+              onPress={() => setShowManualDatePicker(false)}
+            >
+              <Pressable style={styles.sheet} onPress={() => {}}>
+                <DatePicker
+                  defaultDate={manualDate}
+                  confirm={(dateStr) => {
+                    setManualDate(dateStr);
+                    setShowManualDatePicker(false);
+                  }}
+                  cancel={() => setShowManualDatePicker(false)}
+                />
+              </Pressable>
+            </Pressable>
+          </Modal>
         </View>
+      </Modal>
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <Pressable
+          style={styles.overlay}
+          onPress={() => setEditModalVisible(false)}
+        >
+          <Pressable
+            style={[styles.sheet, { borderRadius: 12, padding: 16 }]}
+            onPress={() => {}}
+          >
+            <Text style={{ fontWeight: "700", fontSize: 18, marginBottom: 8 }}>
+              Edit Run
+            </Text>
+            <TextInput
+              placeholder="Distance (km)"
+              keyboardType="decimal-pad"
+              value={editDistanceKm}
+              onChangeText={setEditDistanceKm}
+              style={styles.input}
+            />
+            <TextInput
+              placeholder="Duration (minutes)"
+              keyboardType="decimal-pad"
+              value={editDurationMin}
+              onChangeText={setEditDurationMin}
+              style={styles.input}
+            />
+            <TextInput
+              placeholder="Notes"
+              value={editNotes}
+              onChangeText={setEditNotes}
+              style={[styles.input, { height: 80 }]}
+              multiline
+            />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginTop: 8,
+              }}
+            >
+              {Platform.OS === "web" ? (
+                <TextInput
+                  placeholder="Date (YYYY-MM-DD)"
+                  value={editDate}
+                  onChangeText={setEditDate}
+                  style={[styles.input, { flex: 1 }]}
+                />
+              ) : (
+                <Pressable
+                  onPress={() => setShowDatePicker(true)}
+                  style={[styles.input, { flex: 1, justifyContent: "center" }]}
+                >
+                  <Text>{editDate}</Text>
+                </Pressable>
+              )}
+              <Pressable
+                onPress={() => setEditDate(todayIsoDate)}
+                style={{
+                  marginLeft: 8,
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  backgroundColor: "#eee",
+                  borderRadius: 8,
+                }}
+              >
+                <Text>Today</Text>
+              </Pressable>
+            </View>
+            <Modal visible={showDatePicker} transparent animationType="slide">
+              <Pressable
+                style={styles.overlay}
+                onPress={() => setShowDatePicker(false)}
+              >
+                <Pressable style={styles.sheet} onPress={() => {}}>
+                  <DatePicker
+                    defaultDate={editDate}
+                    confirm={(dateStr) => {
+                      setEditDate(dateStr);
+                      setShowDatePicker(false);
+                    }}
+                    cancel={() => setShowDatePicker(false)}
+                  />
+                </Pressable>
+              </Pressable>
+            </Modal>
+            <View style={{ flexDirection: "row", marginTop: 12 }}>
+              <Pressable
+                style={styles.modalBtn}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Text>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.modalBtn,
+                  { marginLeft: 8, opacity: editSaving ? 0.7 : 1 },
+                ]}
+                onPress={handleSaveEdit}
+                disabled={editSaving}
+              >
+                {editSaving ? (
+                  <ActivityIndicator color="#E84545" />
+                ) : (
+                  <Text style={{ fontWeight: "700" }}>Save</Text>
+                )}
+              </Pressable>
+            </View>
+            <View style={{ marginTop: 10 }}>
+              <TouchableOpacity
+                style={[styles.dismissBtn, { marginTop: 8 }]}
+                onPress={handleDeleteRun}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.dismissTxt}>Delete Run</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -267,7 +484,6 @@ export default function HomeScreen({ navigation }: Props) {
           )}
         </Pressable>
       </View>
-
       <View style={styles.feelingBox}>
         <Text style={styles.feelingLabel}>How are you feeling today?</Text>
         <TextInput
@@ -279,7 +495,6 @@ export default function HomeScreen({ navigation }: Props) {
           returnKeyType="done"
         />
       </View>
-
       <TouchableOpacity
         style={[styles.senseiBtnFull]}
         onPress={handleAskSensei}
@@ -290,7 +505,6 @@ export default function HomeScreen({ navigation }: Props) {
           {aiLoading ? "Thinking..." : "🥋 Ask Sensei"}
         </Text>
       </TouchableOpacity>
-
       <View style={styles.btnRow}>
         <TouchableOpacity
           style={[styles.startBtn, styles.btnFlex]}
@@ -307,7 +521,6 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.addTxt}>＋ Add Run</Text>
         </TouchableOpacity>
       </View>
-
       <Modal
         visible={suggestion !== null}
         transparent
@@ -378,7 +591,6 @@ export default function HomeScreen({ navigation }: Props) {
           </Pressable>
         </Pressable>
       </Modal>
-
       <Modal
         visible={keyModalVisible}
         transparent
@@ -430,7 +642,6 @@ export default function HomeScreen({ navigation }: Props) {
           </Pressable>
         </Pressable>
       </Modal>
-
       <Text style={styles.section}>Recent Runs</Text>
       {loading ? (
         <ActivityIndicator color="#E84545" style={{ marginTop: 32 }} />
@@ -439,18 +650,34 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.emptyTxt}>No runs yet — hit Start Run!</Text>
         </View>
       ) : (
-        <FlatList
-          data={runs}
-          keyExtractor={(r) => r.id}
-          renderItem={({ item }) => (
-            <RunListItem
-              run={item}
-              onPress={(r) => navigation.navigate("RunDetail", { runId: r.id })}
-            />
-          )}
-          contentContainerStyle={{ paddingBottom: 32 }}
-        />
+        <>
+          {/* show only the most recent 3 runs */}
+          <FlatList
+            data={[...runs]
+              .sort((a, b) => b.date.localeCompare(a.date))
+              .slice(0, 3)}
+            keyExtractor={(r) => r.id}
+            renderItem={({ item }) => (
+              <RunListItem
+                run={item}
+                onPress={(r) =>
+                  navigation.navigate("RunDetail", { runId: r.id })
+                }
+                onEdit={(r) => openEditModal(r)}
+              />
+            )}
+            contentContainerStyle={{ paddingBottom: 32 }}
+            style={{ flexGrow: 0 }}
+          />
+        </>
       )}
+      <TouchableOpacity
+        style={[styles.dismissBtn, { marginHorizontal: 20, marginBottom: 4 }]}
+        onPress={() => navigation.navigate("AllRuns")}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.dismissTxt}>Show all runs</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -625,7 +852,7 @@ const styles = StyleSheet.create({
     color: "#1a1a2e",
     paddingHorizontal: 20,
     marginTop: 9,
-    marginBottom: 9,
+    marginBottom: 4,
     backgroundColor: "transparent",
   },
 

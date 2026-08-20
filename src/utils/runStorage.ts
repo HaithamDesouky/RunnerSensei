@@ -6,7 +6,12 @@ import {
   updateStreakWithRunDate,
   incrementWeeklyRun,
 } from "./userStorage";
-import { saveRun as dbSaveRun, getRuns as dbGetRuns } from "./supabaseRuns";
+import {
+  saveRun as dbSaveRun,
+  getRuns as dbGetRuns,
+  updateRun as dbUpdateRun,
+  deleteRun as dbDeleteRun,
+} from "./supabaseRuns";
 
 function avgPaceMinPerKmForRun(r: Run) {
   if (!r.distanceMeters || r.distanceMeters <= 0) return null;
@@ -132,18 +137,41 @@ export async function updateRun(
   id: string,
   patch: Partial<Run>,
 ): Promise<void> {
-  const runs = await getRuns();
-  await AsyncStorage.setItem(
-    RUNS_KEY,
-    JSON.stringify(runs.map((r) => (r.id === id ? { ...r, ...patch } : r))),
-  );
+  try {
+    const dbPatch: any = {};
+    if (typeof patch.distanceMeters === "number")
+      dbPatch.distance_km = patch.distanceMeters / 1000;
+    if (typeof patch.durationMs === "number")
+      dbPatch.duration_sec = Math.round(patch.durationMs / 1000);
+    if (typeof patch.notes === "string") dbPatch.notes = patch.notes;
+    if (typeof patch.date === "string") {
+      try {
+        const d = new Date(patch.date);
+        if (!isNaN(d.getTime())) dbPatch.created_at = d.toISOString();
+      } catch (e) {}
+    }
+    await dbUpdateRun(id, dbPatch);
+  } catch (e) {
+    console.warn("updateRun failed", e);
+    // fallback to local AsyncStorage edit so app remains functional offline
+    const runs = await getRuns();
+    await AsyncStorage.setItem(
+      RUNS_KEY,
+      JSON.stringify(runs.map((r) => (r.id === id ? { ...r, ...patch } : r))),
+    );
+  }
 }
 
 export async function deleteRun(id: string): Promise<void> {
-  const runs = await getRuns();
-  await AsyncStorage.setItem(
-    RUNS_KEY,
-    JSON.stringify(runs.filter((r) => r.id !== id)),
-  );
+  try {
+    await dbDeleteRun(id);
+  } catch (e) {
+    console.warn("deleteRun failed", e);
+    const runs = await getRuns();
+    await AsyncStorage.setItem(
+      RUNS_KEY,
+      JSON.stringify(runs.filter((r) => r.id !== id)),
+    );
+  }
 }
 
