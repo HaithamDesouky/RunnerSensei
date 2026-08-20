@@ -1,5 +1,7 @@
 function createTypeChecker() {
-  const fn = function () { return null; };
+  const fn = function () {
+    return null;
+  };
   fn.isRequired = fn;
   return fn;
 }
@@ -27,3 +29,4 @@ const PropTypes = {
 
 module.exports = PropTypes;
 exports.default = PropTypes;
+
