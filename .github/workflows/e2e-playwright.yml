@@ -23,10 +23,7 @@ jobs:
         run: npm ci
 
       - name: Install Playwright browsers and deps
-        uses: microsoft/playwright-github-action@v1
-        with:
-          install-deps: true
-          browsers: "chromium,firefox,webkit"
+        run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Start Expo web (port 8081)
         env:
