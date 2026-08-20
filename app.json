@@ -12,9 +12,7 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "RunnerSensei needs your location to track your run route.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "RunnerSensei tracks your run even when the app is minimized.",
-        "UIBackgroundModes": [
-          "location"
-        ]
+        "UIBackgroundModes": ["location"]
       }
     },
     "android": {
@@ -41,6 +39,15 @@
         }
       ],
       "expo-secure-store"
-    ]
+    ],
+    "cli": {
+      "appVersionSource": "git"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "bca9b715-611b-40a8-9444-baa66dad141b"
+      }
+    }
   }
 }
+
