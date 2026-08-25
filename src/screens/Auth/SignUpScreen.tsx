@@ -148,9 +148,13 @@ export default function SignUpScreen() {
             onPress={() => setShowPassword((v) => !v)}
             style={styles.toggle}
             accessibilityRole="button"
-            accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+            accessibilityLabel={
+              showPassword ? "Hide password" : "Show password"
+            }
           >
-            <Text style={styles.toggleTxt}>{showPassword ? "Hide" : "Show"}</Text>
+            <Text style={styles.toggleTxt}>
+              {showPassword ? "Hide" : "Show"}
+            </Text>
           </Pressable>
         </View>
         <TextInput
