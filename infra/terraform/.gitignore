@@ -1,0 +1,19 @@
+# Local state and plans
+.terraform/
+.terraform.lock.hcl.bak
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Sensitive inputs
+terraform.tfvars
+*.auto.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Plan artifacts
+tfplan
+*.tfplan

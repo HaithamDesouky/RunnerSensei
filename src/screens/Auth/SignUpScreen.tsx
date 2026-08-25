@@ -15,6 +15,7 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const { signUp } = useAuth();
@@ -132,19 +133,35 @@ export default function SignUpScreen() {
           autoCapitalize="none"
           keyboardType="email-address"
         />
-        <TextInput
-          placeholder="Password"
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+        <View style={styles.passwordRow}>
+          <TextInput
+            placeholder="Password"
+            style={[styles.input, styles.passwordInput]}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            textContentType="newPassword"
+          />
+          <Pressable
+            onPress={() => setShowPassword((v) => !v)}
+            style={styles.toggle}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+          >
+            <Text style={styles.toggleTxt}>{showPassword ? "Hide" : "Show"}</Text>
+          </Pressable>
+        </View>
         <TextInput
           placeholder="Confirm password"
           style={styles.input}
           value={confirmPassword}
           onChangeText={setConfirmPassword}
-          secureTextEntry
+          secureTextEntry={!showPassword}
+          autoCapitalize="none"
+          autoCorrect={false}
+          textContentType="newPassword"
         />
         {confirmPassword.length > 0 && password !== confirmPassword ? (
           <Text style={styles.mismatch}>Passwords do not match</Text>
@@ -208,6 +225,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   mismatch: { color: "#e02424", marginBottom: 8, fontWeight: "700" },
+  passwordRow: { position: "relative", justifyContent: "center" },
+  passwordInput: { paddingRight: 64 },
+  toggle: {
+    position: "absolute",
+    right: 8,
+    top: 0,
+    bottom: 12,
+    paddingHorizontal: 8,
+    justifyContent: "center",
+  },
+  toggleTxt: { color: "#1a1a2e", fontWeight: "700" },
   strengthRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   strengthBarBg: {
     flex: 1,

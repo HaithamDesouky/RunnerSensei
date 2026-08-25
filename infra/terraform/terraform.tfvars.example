@@ -1,0 +1,18 @@
+# Copy to terraform.tfvars and fill in values.
+# terraform.tfvars is gitignored.
+
+organization_id = "your-org-slug"
+project_name    = "runnersensei"
+region          = "us-east-1"
+# instance_size = "micro"  # only set on paid orgs; free-plan orgs must omit this
+
+site_url                 = "http://localhost:8081"
+additional_redirect_urls = [
+  "runnersensei://auth-callback",
+]
+
+# Optional – leave commented to auto-generate a strong password.
+# db_password = "change-me"
+
+# Prefer setting SUPABASE_ACCESS_TOKEN in your shell instead of putting it here.
+# supabase_access_token = "sbp_xxx"

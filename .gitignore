@@ -47,6 +47,14 @@ yarn-error.*
 # VS Code
 .vscode/
 
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+*.auto.tfvars
+
 # Test coverage
 coverage/
 
