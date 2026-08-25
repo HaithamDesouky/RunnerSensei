@@ -8,9 +8,9 @@ output "supabase_url" {
   value       = "https://${supabase_project.this.id}.supabase.co"
 }
 
-output "publishable_api_key" {
-  description = "Publishable API key for the Expo client (put in SUPABASE_ANON_KEY)."
-  value       = supabase_apikey.publishable.api_key
+output "server_secret_api_key" {
+  description = "Terraform-managed secret API key for server-side use only. NEVER ship in a client."
+  value       = supabase_apikey.server_secret.api_key
   sensitive   = true
 }
 

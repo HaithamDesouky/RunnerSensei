@@ -20,6 +20,18 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   );
 }
 
+if (__DEV__) {
+  // TEMP: remove after confirming the app is using the current key.
+  console.log(
+    "[supabase] url=",
+    SUPABASE_URL,
+    "keyPrefix=",
+    (SUPABASE_ANON_KEY || "").slice(0, 24),
+    "keyLen=",
+    (SUPABASE_ANON_KEY || "").length,
+  );
+}
+
 export const supabase = createClient(
   SUPABASE_URL || "",
   SUPABASE_ANON_KEY || "",
